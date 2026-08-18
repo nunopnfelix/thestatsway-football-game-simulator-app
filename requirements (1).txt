@@ -1,0 +1,10 @@
+pip
+streamlit
+pandas
+numpy
+plotly
+mplsoccer
+matplotlib
+seaborn
+scikit-learn
+lightgbm 
