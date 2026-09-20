@@ -209,7 +209,7 @@ hr { border-color: var(--border-soft) !important; }
 )
 
 # ----------------------------------------------------------------------------
-# TOP NAVIGATION BAR (Player Attributes moved right after Instructions)
+# TOP NAVIGATION BAR
 # ----------------------------------------------------------------------------
 NAV_ITEMS = [
     ("instructions", "ℹ️ Instructions"),
@@ -238,24 +238,14 @@ for col, (page_id, label) in zip(nav_cols, NAV_ITEMS):
 # --------------------------------------------------------------------------
 # 1. Data loading
 # --------------------------------------------------------------------------
-# DATA.csv, as supplied, is not internally consistent: most rows are UTF-8
-# encoded but a handful of rows (and even individual fields within a row)
-# were saved as Latin-1/Windows-1252, so a straight `pd.read_csv` throws a
-# UnicodeDecodeError. The helpers below decode defensively line-by-line and
-# then repair any residual mojibake (e.g. "JoÃ£o" -> "João") field by field.
-# The attribute columns also arrive as "Goal.Scoring" / "Assist.Creation"
-# (dots instead of hyphens) and sit on a native ~0-19 scale rather than the
-# 0-99 scale the rest of the app assumes, so both are normalized here too.
-
 ATTR_RENAME = {
     "Goal.Scoring": "Goal-Scoring",
     "Assist.Creation": "Assist-Creation",
 }
-RAW_ATTR_MAX = 19  # native ceiling of the attribute columns in DATA.csv
+RAW_ATTR_MAX = 19
 
 
 def _repair_mojibake(value):
-    """Undo UTF-8-bytes-read-as-Latin-1 mangling on a single string field."""
     if not isinstance(value, str):
         return value
     try:
@@ -287,10 +277,6 @@ def load_data() -> pd.DataFrame:
     df["Player"] = df["Player"].astype(str).str.strip()
     df["Team"] = df["Team"].astype(str).str.strip()
 
-    # A few rows share an identical Team+Player pair but carry different
-    # attributes (a data-export quirk, not the same person twice) -- give
-    # repeats a "(2)", "(3)"... suffix so every row stays individually
-    # selectable in the squad/lineup pickers.
     dup_rank = df.groupby(["Team", "Player"]).cumcount()
     df["Player"] = np.where(
         dup_rank > 0, df["Player"] + " (" + (dup_rank + 1).astype(str) + ")", df["Player"]
@@ -317,9 +303,6 @@ POS_WEIGHTS = {
 def _overall_rating(row) -> float:
     w = POS_WEIGHTS[row.get("Position", "MF")]
     raw = sum(row.get(k, RAW_ATTR_MAX / 2) * v for k, v in w.items())
-    # Attributes live on a ~0-19 scale in DATA.csv; rescale the weighted
-    # average up to a familiar 0-99 "OVR" so downstream match-engine math
-    # (tuned for a 0-99 scale) still behaves sensibly.
     return round(min(99.0, raw * (99.0 / RAW_ATTR_MAX)), 1)
 
 FORMATIONS = {
@@ -346,6 +329,7 @@ OOP_LINES = ["High line", "Medium-block", "Low defensive line"]
 PRESS_TYPES = ["High Press", "Balanced", "Low Press"]
 
 SCORER_SLOT_BIAS = {"CF": 3.0, "AM & W": 2.0, "MF": 1.0, "FB & WB": 0.35, "CB": 0.15, "GK": 0.02}
+ASSIST_SLOT_BIAS = {"AM & W": 3.0, "MF": 2.5, "CF": 1.5, "FB & WB": 1.5, "CB": 0.2, "GK": 0.01}
 
 def slot_labels(formation: str):
     labels = []
@@ -382,12 +366,46 @@ def auto_select_xi(squad: pd.DataFrame, formation: str) -> pd.DataFrame:
             
     return pd.DataFrame(picks)
 
-def lineup_from_manual(squad: pd.DataFrame, assignments: dict) -> pd.DataFrame:
+def lineup_from_manual(squad: pd.DataFrame, assignments: dict, formation: str) -> pd.DataFrame:
+    assigned_players = set()
     rows = []
+    
     for (pos, label), player in assignments.items():
-        if player is None: continue
-        r = squad[squad["Player"] == player].iloc[0]
-        rows.append({"Slot": pos, "Label": label, "Player": player, "Position": r["Position"], "OVR": r["OVR"], "OOP": r["Position"] != pos})
+        if player and player != "Select Player":
+            assigned_players.add(player)
+            r = squad[squad["Player"] == player]
+            if not r.empty:
+                r = r.iloc[0]
+                rows.append({"Slot": pos, "Label": label, "Player": player, "Position": r["Position"], "OVR": r["OVR"], "OOP": r["Position"] != pos})
+                
+    labels = slot_labels(formation)
+    filled_slots = {(r["Slot"], r["Label"]) for r in rows}
+    remaining_squad = squad[~squad["Player"].isin(assigned_players)].sort_values("OVR", ascending=False)
+    
+    for pos, label in labels:
+        if (pos, label) in filled_slots:
+            continue
+        pos_pool = remaining_squad[remaining_squad["Position"] == pos]
+        if not pos_pool.empty:
+            r = pos_pool.iloc[0]
+            is_oop = False
+        elif not remaining_squad.empty:
+            r = remaining_squad.iloc[0]
+            is_oop = True
+        else:
+            break
+            
+        rows.append({
+            "Slot": pos,
+            "Label": label,
+            "Player": r["Player"],
+            "Position": r["Position"],
+            "OVR": round(r["OVR"] * 0.85, 1) if is_oop else r["OVR"],
+            "OOP": is_oop
+        })
+        assigned_players.add(r["Player"])
+        remaining_squad = remaining_squad[remaining_squad["Player"] != r["Player"]]
+        
     return pd.DataFrame(rows)
 
 # --------------------------------------------------------------------------
@@ -462,14 +480,40 @@ def simulate_match(home_xi, away_xi,
         "possession_home": round(possession_home, 1),
     }
 
-def pick_scorers(xi: pd.DataFrame, n_goals: int, rng=None):
-    if n_goals <= 0 or xi.empty: return []
+def pick_goal_events(xi: pd.DataFrame, n_goals: int, rng=None):
+    if n_goals <= 0 or xi.empty:
+        return []
     rng = rng or np.random.default_rng()
-    pool = xi.copy()
-    pool["w"] = pool["Slot"].map(SCORER_SLOT_BIAS).fillna(0.5) * (pool["OVR"] / 50.0)
-    pool["w"] = pool["w"].clip(lower=0.01)
-    weights = (pool["w"] / pool["w"].sum()).to_numpy()
-    return list(rng.choice(pool["Player"].to_numpy(), size=n_goals, p=weights))
+
+    pool_scorer = xi.copy()
+    pool_scorer["w"] = pool_scorer["Slot"].map(SCORER_SLOT_BIAS).fillna(0.5) * (pool_scorer["OVR"] / 50.0)
+    pool_scorer["w"] = pool_scorer["w"].clip(lower=0.01)
+    scorer_weights = (pool_scorer["w"] / pool_scorer["w"].sum()).to_numpy()
+
+    pool_assist = xi.copy()
+    pool_assist["w"] = pool_assist["Slot"].map(ASSIST_SLOT_BIAS).fillna(0.5) * (pool_assist["OVR"] / 50.0)
+    pool_assist["w"] = pool_assist["w"].clip(lower=0.01)
+
+    events = []
+    for _ in range(n_goals):
+        minute = int(rng.integers(1, 91))
+        scorer = rng.choice(pool_scorer["Player"].to_numpy(), p=scorer_weights)
+
+        assister = None
+        if len(xi) > 1 and rng.random() < 0.75:
+            assist_pool = pool_assist[pool_assist["Player"] != scorer]
+            if not assist_pool.empty:
+                assist_weights = (assist_pool["w"] / assist_pool["w"].sum()).to_numpy()
+                assister = rng.choice(assist_pool["Player"].to_numpy(), p=assist_weights)
+
+        events.append({
+            "minute": minute,
+            "scorer": scorer,
+            "assist": assister,
+        })
+
+    events.sort(key=lambda x: x["minute"])
+    return events
 
 # --------------------------------------------------------------------------
 # 4. Season / schedule
@@ -538,11 +582,12 @@ def init_session():
     ss.setdefault("matchday", 0)         
     ss.setdefault("table", {})
     ss.setdefault("scorers", {})
+    ss.setdefault("assists", {})
     ss.setdefault("history", [])         
     ss.setdefault("last_commentary", None)
     ss.setdefault("player_ratings_sum", {})
     ss.setdefault("player_ratings_count", {})
-    ss.setdefault("recent_match_ratings", {})
+    ss.setdefault("recent_match_ratings", [])
 
 init_session()
 ss = st.session_state
@@ -563,11 +608,12 @@ def start_new_season(team: str):
     ss.matchday = 0
     ss.table = {t: empty_table_row() for t in ALL_TEAMS}
     ss.scorers = {}
+    ss.assists = {}
     ss.history = []
     ss.last_commentary = None
     ss.player_ratings_sum = {}
     ss.player_ratings_count = {}
-    ss.recent_match_ratings = {}
+    ss.recent_match_ratings = []
 
 def reset_all():
     keep_page = ss.get("page", "instructions")
@@ -580,19 +626,14 @@ def get_user_squad():
 
 def current_user_xi():
     squad = get_user_squad()
-    if ss.manual_lineup:
-        xi = lineup_from_manual(squad, ss.manual_lineup)
-        if len(xi) != 11: xi = auto_select_xi(squad, ss.formation)
-    else:
-        xi = auto_select_xi(squad, ss.formation)
-        
-    def apply_role(row):
-        if row["Slot"] == "GK": return "GK"
-        if row["Slot"] == "CB": return ss.player_roles.get((row["Slot"], row["Label"]), "Defensive")
-        default_role = "Attack" if row["Slot"] in ["CF", "AM & W"] else "Balanced" if row["Slot"] == "MF" else "Defensive"
-        return ss.player_roles.get((row["Slot"], row["Label"]), default_role)
-        
-    xi["Role"] = xi.apply(apply_role, axis=1)
+    xi = lineup_from_manual(squad, ss.manual_lineup, ss.formation)
+    
+    roles_list = []
+    for _, row in xi.iterrows():
+        key = (row["Slot"], row["Label"])
+        default_role = "GK" if row["Slot"] == "GK" else ("Attack" if row["Slot"] in ["CF", "AM & W"] else ("Balanced" if row["Slot"] == "MF" else "Defensive"))
+        roles_list.append(ss.player_roles.get(key, default_role))
+    xi["Role"] = roles_list
     return xi
 
 def ai_lineup_for(team: str):
@@ -625,41 +666,60 @@ def play_fixture(home, away, rng):
         away_xi, away_ment, away_tempo, away_line, away_press = ai_lineup_for(away)
 
     result = simulate_match(home_xi, away_xi, home_ment, away_ment, home_tempo, away_tempo, home_line, away_line, home_press, away_press, rng=rng)
-    home_scorers = pick_scorers(home_xi, result["home_goals"], rng)
-    away_scorers = pick_scorers(away_xi, result["away_goals"], rng)
-    for s in home_scorers + away_scorers:
-        ss.scorers[s] = ss.scorers.get(s, 0) + 1
+    home_events = pick_goal_events(home_xi, result["home_goals"], rng)
+    away_events = pick_goal_events(away_xi, result["away_goals"], rng)
+
+    for e in home_events + away_events:
+        if e.get("scorer"):
+            ss.scorers[e["scorer"]] = ss.scorers.get(e["scorer"], 0) + 1
+        if e.get("assist"):
+            ss.assists[e["assist"]] = ss.assists.get(e["assist"], 0) + 1
+
     update_table(ss.table, home, away, result["home_goals"], result["away_goals"])
     
     home_cs = result["away_goals"] == 0
     away_cs = result["home_goals"] == 0
-    
-    h_ratings = {}
-    for _, p in home_xi.iterrows():
-        r = get_match_rating(result["xg_home"], result["home_goals"], home_cs, rng, p["Player"] in home_scorers)
-        h_ratings[p["Player"]] = r
-        ss.player_ratings_sum[p["Player"]] = ss.player_ratings_sum.get(p["Player"], 0) + r
-        ss.player_ratings_count[p["Player"]] = ss.player_ratings_count.get(p["Player"], 0) + 1
-        
-    a_ratings = {}
-    for _, p in away_xi.iterrows():
-        r = get_match_rating(result["xg_away"], result["away_goals"], away_cs, rng, p["Player"] in away_scorers)
-        a_ratings[p["Player"]] = r
-        ss.player_ratings_sum[p["Player"]] = ss.player_ratings_sum.get(p["Player"], 0) + r
-        ss.player_ratings_count[p["Player"]] = ss.player_ratings_count.get(p["Player"], 0) + 1
-        
+
+    def process_player_stats(xi, goal_events, cs, xg, team_goals):
+        stats = []
+        scorers = [e["scorer"] for e in goal_events]
+        assisters = [e["assist"] for e in goal_events if e["assist"]]
+        for _, p in xi.iterrows():
+            player_name = p["Player"]
+            g_count = scorers.count(player_name)
+            a_count = assisters.count(player_name)
+            is_scorer = g_count > 0
+            r = get_match_rating(xg, team_goals, cs, rng, is_scorer)
+            if a_count > 0:
+                r = round(min(10.0, r + 0.5 * a_count), 1)
+
+            ss.player_ratings_sum[player_name] = ss.player_ratings_sum.get(player_name, 0) + r
+            ss.player_ratings_count[player_name] = ss.player_ratings_count.get(player_name, 0) + 1
+
+            stats.append({
+                "Player": player_name,
+                "Minutes Played": 90,
+                "Goal": g_count,
+                "Assist": a_count,
+                "Rating": r
+            })
+        return stats
+
+    h_stats = process_player_stats(home_xi, home_events, home_cs, result["xg_home"], result["home_goals"])
+    a_stats = process_player_stats(away_xi, away_events, away_cs, result["xg_away"], result["away_goals"])
+
     if home == ss.user_team:
-        ss.recent_match_ratings = h_ratings
+        ss.recent_match_ratings = h_stats
     elif away == ss.user_team:
-        ss.recent_match_ratings = a_ratings
+        ss.recent_match_ratings = a_stats
 
     ss.history.append({
         "round": ss.matchday + 1, "home": home, "away": away,
         "hg": result["home_goals"], "ag": result["away_goals"],
         "is_user": ss.user_team in (home, away),
-        "home_scorers": home_scorers, "away_scorers": away_scorers,
+        "home_events": home_events, "away_events": away_events,
     })
-    return result, home_scorers, away_scorers
+    return result, home_events, away_events
 
 def play_next_matchday():
     if ss.matchday >= len(ss.schedule): return None
@@ -667,18 +727,23 @@ def play_next_matchday():
     round_fixtures = ss.schedule[ss.matchday]
     user_result = None
     for home, away in round_fixtures:
-        result, hs, as_ = play_fixture(home, away, rng)
+        result, he, ae = play_fixture(home, away, rng)
         if ss.user_team in (home, away):
-            user_result = (home, away, result, hs, as_)
+            user_result = (home, away, result, he, ae)
             
     if user_result:
-        home, away, result, hs, as_ = user_result
+        home, away, result, he, ae = user_result
         lines = [f"Full time at {home}'s ground: {home} {result['home_goals']}-{result['away_goals']} {away}."]
         lines.append(f"Expected Goals: {result['xg_home']} - {result['xg_away']} | Possession: {result['possession_home']}% - {100-result['possession_home']}%")
-        events = [("home", s) for s in hs] + [("away", s) for s in as_]
-        rng.shuffle(events)
-        for side, scorer in events:
-            lines.append(f"⚽ GOAL! {scorer} ({home if side == 'home' else away})")
+        
+        events = [(e["minute"], "home", e["scorer"], e["assist"]) for e in he] + \
+                 [(e["minute"], "away", e["scorer"], e["assist"]) for e in ae]
+        events.sort(key=lambda x: x[0])
+
+        for min_, side, scorer, assister in events:
+            team_name = home if side == "home" else away
+            assist_str = f" (Assist: {assister})" if assister else ""
+            lines.append(f"⚽ GOAL! {min_}' - {scorer} ({team_name}){assist_str}")
         ss.last_commentary = lines
     else:
         ss.last_commentary = None
@@ -708,12 +773,6 @@ with st.sidebar:
 # --------------------------------------------------------------------------
 
 def style_player_attributes(df: pd.DataFrame):
-    """Applies color coding and formatting to player attribute columns.
-
-    DATA.csv's attribute columns run roughly 0-19 (an FM-style 1-20
-    rating), not 0-99, so the color bands and number formatting below are
-    tuned to that native scale rather than the original 0-99 assumption.
-    """
     exclude_cols = ["OVR", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "round", "Season"]
     num_cols = [c for c in df.select_dtypes(include=np.number).columns if c not in exclude_cols]
     
@@ -724,15 +783,15 @@ def style_player_attributes(df: pd.DataFrame):
         if not isinstance(val, (int, float)) or pd.isna(val):
             return ''
         if val <= 3:
-            return 'background-color: rgba(255, 75, 75, 0.4);'   # Red (0-3)
+            return 'background-color: rgba(255, 75, 75, 0.4);'
         elif val <= 7:
-            return 'background-color: rgba(255, 150, 50, 0.4);'  # Orange (4-7)
+            return 'background-color: rgba(255, 150, 50, 0.4);'
         elif val <= 11:
-            return 'background-color: rgba(220, 220, 50, 0.3);'  # Yellow (8-11)
+            return 'background-color: rgba(220, 220, 50, 0.3);'
         elif val <= 15:
-            return 'background-color: rgba(100, 220, 100, 0.3);' # Light Green (12-15)
+            return 'background-color: rgba(100, 220, 100, 0.3);'
         else:
-            return 'background-color: rgba(50, 180, 50, 0.5);'   # Green (16-19)
+            return 'background-color: rgba(50, 180, 50, 0.5);'
             
     styler = df.style
     if hasattr(styler, "map"):
@@ -919,9 +978,23 @@ def render_squad_tactics():
         return
 
     st.subheader(f"{ss.user_team} — Squad & Tactics")
-    col_tac, col_pitch, col_sel = st.columns([1.2, 2.5, 2.0], gap="medium")
     squad = get_user_squad()
 
+    st.markdown("##### 👥 Full Squad Attributes")
+    filtered_squad = squad.copy()
+    squad_positions = st.multiselect("Filter by Position", POSITION_ORDER, key="squad_pos_filter")
+    if squad_positions:
+        filtered_squad = filtered_squad[filtered_squad["Position"].isin(squad_positions)]
+
+    squad_display = filtered_squad.drop(
+        columns=["PlayerID", "Team", "OVR", "Season", "League", "season", "league"], 
+        errors="ignore"
+    )
+    st.dataframe(style_player_attributes(squad_display), width="stretch", hide_index=True)
+    
+    st.divider()
+
+    col_tac, col_pitch, col_sel = st.columns([1.2, 2.5, 2.0], gap="medium")
     with col_tac:
         st.markdown("##### 📋 Tactical Style")
         new_formation = st.selectbox("Formation", list(FORMATIONS.keys()), index=list(FORMATIONS.keys()).index(ss.formation))
@@ -943,77 +1016,58 @@ def render_squad_tactics():
             st.rerun()
 
     labels = slot_labels(ss.formation)
-    auto_xi = auto_select_xi(squad, ss.formation)
-    current_xi_df = current_user_xi()
 
     with col_sel:
         st.markdown("##### 👕 Starting XI & Roles")
         changed = False
-        used_players = set()
         
         for i, (pos, label) in enumerate(labels):
-            auto_row = auto_xi[auto_xi["Slot"] == pos].reset_index(drop=True)
-            same_pos_labels = [l for p, l in labels if p == pos]
-            idx_within_pos = same_pos_labels.index(label)
-            default_player = auto_row.iloc[idx_within_pos]["Player"] if idx_within_pos < len(auto_row) else None
+            key = (pos, label)
+            current_val = ss.manual_lineup.get(key, "Select Player")
             
-            current = ss.manual_lineup.get((pos, label), default_player)
-            pos_squad = squad[squad["Position"] == pos]["Player"].tolist()
-            if current and current not in pos_squad:
-                pos_squad.append(current)
-                
-            avail = [p for p in pos_squad if p not in used_players or p == current]
-            if not avail: avail = squad["Player"].tolist()
-            idx = avail.index(current) if current in avail else 0
+            pos_players = squad[squad["Position"] == pos]["Player"].tolist()
+            other_selected = {p for k, p in ss.manual_lineup.items() if k != key and p and p != "Select Player"}
+            avail = ["Select Player"] + [p for p in pos_players if p not in other_selected]
+            
+            if current_val not in avail:
+                current_val = "Select Player"
+            idx = avail.index(current_val)
             
             col_p, col_r = st.columns([6, 4])
             with col_p:
                 selected = st.selectbox(label, avail, index=idx, key=f"slot_{pos}_{label}")
-                used_players.add(selected)
-                if ss.manual_lineup.get((pos, label)) != selected:
-                    ss.manual_lineup[(pos, label)] = selected
+                if ss.manual_lineup.get(key, "Select Player") != selected:
+                    ss.manual_lineup[key] = selected
                     changed = True
 
             with col_r:
                 if pos == "GK":
                     st.selectbox("Role", ["GK"], disabled=True, key=f"role_{pos}_{label}")
                 elif pos == "CB":
-                    current_role = ss.player_roles.get((pos, label), "Defensive")
+                    current_role = ss.player_roles.get(key, "Defensive")
                     if current_role not in ["Balanced", "Defensive"]: current_role = "Defensive"
                     role = st.selectbox("Role", ["Balanced", "Defensive"], index=["Balanced", "Defensive"].index(current_role), key=f"role_{pos}_{label}")
-                    if ss.player_roles.get((pos, label)) != role:
-                        ss.player_roles[(pos, label)] = role
+                    if ss.player_roles.get(key) != role:
+                        ss.player_roles[key] = role
                         changed = True
                 else:
                     default_role = "Attack" if pos in ["CF", "AM & W"] else "Balanced" if pos == "MF" else "Defensive"
-                    current_role = ss.player_roles.get((pos, label), default_role)
+                    current_role = ss.player_roles.get(key, default_role)
                     role = st.selectbox("Role", ["Attack", "Balanced", "Defensive"], index=["Attack", "Balanced", "Defensive"].index(current_role), key=f"role_{pos}_{label}")
-                    if ss.player_roles.get((pos, label)) != role:
-                        ss.player_roles[(pos, label)] = role
+                    if ss.player_roles.get(key) != role:
+                        ss.player_roles[key] = role
                         changed = True
 
         if changed:
             st.rerun()
 
+    # Generate current XI AFTER selections have been captured/updated above
+    current_xi_df = current_user_xi()
+
     with col_pitch:
         st.markdown(f"##### 🏟️ {ss.formation} Shape")
         avg_ratings = {k: ss.player_ratings_sum[k]/ss.player_ratings_count[k] for k in ss.player_ratings_sum}
         st.markdown(generate_pitch_html(current_xi_df, avg_ratings), unsafe_allow_html=True)
-        
-    st.divider()
-    st.markdown("##### 👥 Full Squad Attributes")
-    
-    # Filtering controls for squad table
-    filtered_squad = squad.copy()
-    squad_positions = st.multiselect("Filter by Position", POSITION_ORDER, key="squad_pos_filter")
-    if squad_positions:
-        filtered_squad = filtered_squad[filtered_squad["Position"].isin(squad_positions)]
-
-    squad_display = filtered_squad.drop(
-        columns=["PlayerID", "Team", "OVR", "Season", "League", "season", "league"], 
-        errors="ignore"
-    )
-    st.dataframe(style_player_attributes(squad_display), width="stretch", hide_index=True)
 
 def render_play():
     if not ss.season_started:
@@ -1046,16 +1100,21 @@ def render_play():
     st.markdown("### Recent Results")
     recent = [h for h in ss.history if h["round"] == ss.matchday]
     if recent:
-        for r in recent:
-            bold_user = lambda t: f"**{t}**" if t == ss.user_team else t
-            st.markdown(f"{bold_user(r['home'])} {r['hg']} - {r['ag']} {bold_user(r['away'])}")
+        recent_df = pd.DataFrame([
+            {
+                "Home Team": r["home"],
+                "Home Goals": r["hg"],
+                "Away Goals": r["ag"],
+                "Away Team": r["away"],
+            }
+            for r in recent
+        ])
+        st.dataframe(recent_df, width="stretch", hide_index=True)
             
     if ss.recent_match_ratings:
         st.markdown("#### 📊 Your Match Ratings")
-        cols = st.columns(4)
-        for i, (player, rating) in enumerate(sorted(ss.recent_match_ratings.items(), key=lambda x: -x[1])):
-            color = "green" if rating >= 7.5 else "orange" if rating >= 6.0 else "red"
-            cols[i%4].markdown(f"**{player}**: <span style='color:{color}'>{rating:.1f}</span>", unsafe_allow_html=True)
+        ratings_df = pd.DataFrame(ss.recent_match_ratings)
+        st.dataframe(ratings_df, width="stretch", hide_index=True)
 
 def render_table():
     if not ss.season_started:
@@ -1065,18 +1124,36 @@ def render_table():
     st.dataframe(table_dataframe(ss.table), width="stretch")
     
     st.divider()
-    st.subheader("🥇 Top Scorers")
-    if not ss.scorers:
-        st.info("No goals scored yet.")
+    st.subheader("🥇 Player Statistics")
+    
+    stats_df = DF[['Player', 'Team', 'Position']].copy()
+    stats_df['Goals'] = stats_df['Player'].map(ss.scorers).fillna(0).astype(int)
+    stats_df['Assists'] = stats_df['Player'].map(ss.assists).fillna(0).astype(int)
+    
+    def get_avg(p):
+        cnt = ss.player_ratings_count.get(p, 0)
+        return round(ss.player_ratings_sum[p] / cnt, 2) if cnt > 0 else 0.0
+        
+    stats_df['Average Rating'] = stats_df['Player'].apply(get_avg)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        team_filter = st.multiselect("Filter by Team", ALL_TEAMS, key="stat_team_filter")
+    with col2:
+        pos_filter = st.multiselect("Filter by Position", POSITION_ORDER, key="stat_pos_filter")
+        
+    if team_filter:
+        stats_df = stats_df[stats_df['Team'].isin(team_filter)]
+    if pos_filter:
+        stats_df = stats_df[stats_df['Position'].isin(pos_filter)]
+        
+    stats_df = stats_df[stats_df['Average Rating'] > 0]
+    stats_df = stats_df.sort_values(by=['Goals', 'Assists', 'Average Rating'], ascending=[False, False, False])
+
+    if stats_df.empty:
+        st.info("No player statistics available yet. Play some matches first!")
     else:
-        scorers_df = (
-            pd.Series(ss.scorers)
-            .sort_values(ascending=False)
-            .head(15)
-            .rename_axis("Player")
-            .reset_index(name="Goals")
-        )
-        st.dataframe(scorers_df, width="stretch", hide_index=True)
+        st.dataframe(stats_df, width="stretch", hide_index=True)
 
 def render_fixtures():
     if not ss.season_started:
