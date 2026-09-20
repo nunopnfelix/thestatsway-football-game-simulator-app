@@ -1,0 +1,293 @@
+Player,Team,Position,Goal.Scoring,Assist.Creation,Attack,Dribbling,Possession,Defense,Physical,Goalkeeping
+João Palhinha,Benfica,MF,16,10,8,1,7,17,7,0
+A. Circati,Benfica,CB,9,8,7,6,8,16,12,0
+J. Kamiński,Benfica,AM & W,11,7,11,11,8,12,12,0
+C. Lenglet,Benfica,CB,6,12,9,13,15,8,11,0
+Sergi Altimira,Sporting CP,MF,10,8,8,9,14,13,15,0
+André Silva,Porto,CF,14,8,10,7,11,8,9,0
+Thiago Carvalho,Vitória SC,CB,15,6,12,11,9,13,13,0
+Óscar Rivas,Vitória SC,CB,12,6,13,16,12,9,14,0
+Z. Debast,Sporting CP,CB,4,17,11,16,19,7,11,0
+Gonçalo Inácio,Sporting CP,CB,12,18,12,13,18,7,12,0
+Eduardo Quaresma,Sporting CP,CB,15,18,15,16,19,9,13,0
+B. Arrey-Mbi,SC Braga,CB,3,11,5,5,10,8,8,0
+S. Niakaté,SC Braga,CB,11,11,13,11,15,9,12,0
+G. Lagerbielke,SC Braga,CB,16,9,11,7,14,8,10,0
+Vitor Carvalho,SC Braga,CB,16,18,12,7,10,10,9,0
+Henrique Silva,Santa Clara,CB,6,6,7,9,6,11,6,0
+Gustavo Mancha,Rio Ave,CB,7,11,9,7,14,9,12,0
+Nelson Abbey,Rio Ave,CB,3,14,12,19,4,8,13,0
+F. Petrasso,Rio Ave,CB,5,10,8,9,6,6,10,0
+J. Brabec,Rio Ave,CB,9,9,8,8,10,11,8,0
+J. Kiwior,Porto,CB,9,12,12,15,13,13,17,0
+J. Bednarek,Porto,CB,11,10,9,10,16,14,15,0
+Zé Vitor,Nacional,CB,16,10,13,11,9,14,9,0
+Léo Santos,Nacional,CB,17,15,17,17,8,11,13,0
+Gilberto Batista,Moreirense,CB,4,6,5,7,10,12,9,0
+Maracás,Moreirense,CB,14,6,7,3,10,9,6,0
+I. Ba,Sporting CP,CB,11,10,11,12,12,14,14,0
+L. Realpe,Famalicão,CB,14,12,12,9,10,10,9,0
+A. Chernev,Estrela Amadora,CB,9,6,10,12,6,5,8,0
+Luan Patrick,Estrela Amadora,CB,3,9,8,14,12,13,10,0
+Bernardo Schappo,Estrela Amadora,CB,7,11,9,10,11,15,14,0
+Ferro,Estoril,CB,15,6,8,4,9,13,7,0
+Kaly,Casa Pia AC,CB,4,9,6,9,6,16,13,0
+David Sousa,Casa Pia AC,CB,16,6,14,15,10,15,14,0
+João Goulart,Casa Pia AC,CB,7,6,9,11,5,10,9,0
+André Geraldes,Casa Pia AC,CB,5,6,7,10,4,3,5,0
+Tomás Araújo,Benfica,CB,15,14,18,19,17,8,14,0
+B. Popović,Arouca,CB,10,6,8,9,8,10,9,0
+José Fontán,Arouca,CB,14,14,13,13,17,9,11,0
+Javi Sánchez,Arouca,CB,6,16,7,7,11,16,10,0
+B. Meupiyou,Alverca,CB,5,11,10,15,8,6,11,0
+Sergi Gómez,Alverca,CB,4,7,4,3,6,5,7,0
+T. Strata,Vitória SC,FB & WB,11,12,15,18,15,9,13,0
+Miguel Maga,Vitória SC,FB & WB,4,6,4,4,14,8,8,0
+João Mendes,Vitória SC,FB & WB,7,10,8,9,16,9,8,0
+Iván Fresneda,Sporting CP,FB & WB,14,8,15,18,11,15,18,0
+G. Vagiannidis,Sporting CP,FB & WB,12,16,15,14,10,11,17,0
+M. Araújo,Sporting CP,FB & WB,19,15,16,12,15,10,9,0
+Mario Dorgeles,SC Braga,FB & WB,18,13,14,9,11,5,11,0
+Gabri Martínez,SC Braga,FB & WB,16,15,19,20,9,9,14,0
+Víctor Gómez,SC Braga,FB & WB,13,15,13,11,13,9,8,0
+Lucas Soares,Santa Clara,FB & WB,6,9,9,9,11,7,6,0
+M. Vrousai,Rio Ave,FB & WB,13,9,12,9,15,16,14,0
+Martim Fernandes,Porto,FB & WB,10,6,7,7,11,13,9,0
+Alberto Costa,Porto,FB & WB,13,18,16,16,8,13,14,0
+Francisco Moura,Porto,FB & WB,18,13,15,12,15,9,11,0
+Z. Sanusi,Porto,FB & WB,15,11,14,14,12,10,18,0
+José Gomes,Nacional,FB & WB,12,15,12,11,5,10,9,0
+Kiko,Moreirense,FB & WB,11,4,7,5,10,13,6,0
+Dinis Pinto,Moreirense,FB & WB,12,14,11,9,5,14,12,0
+Zé Carlos,Rio Ave,FB & WB,4,6,6,9,8,10,9,0
+Pedro Bondo,Famalicão,FB & WB,4,6,6,8,9,16,10,0
+Rodrigo Pinheiro,Famalicão,FB & WB,15,14,15,15,14,10,14,0
+Rafa Soares,Estrela Amadora,FB & WB,12,9,10,9,15,6,5,0
+J. Encada,Estrela Amadora,FB & WB,5,9,11,18,5,8,14,0
+Pedro Carvalho,Estoril,FB & WB,9,7,11,13,9,7,12,0
+Ricard Sánchez,Estoril,FB & WB,16,14,14,10,13,5,7,0
+Abdu Conté,Casa Pia AC,FB & WB,4,11,8,10,10,4,7,0
+S. Dahl,Benfica,FB & WB,10,8,11,13,16,10,15,0
+Tiago Esgaio,Arouca,FB & WB,16,16,10,3,13,11,6,0
+Francisco Chissumba,Alverca,FB & WB,8,6,8,7,9,8,9,0
+I. James,Alverca,FB & WB,7,14,10,11,6,11,9,0
+Diogo Spencer,Alverca,FB & WB,12,9,10,11,13,4,7,0
+Nabil Touaizi,Alverca,FB & WB,11,15,14,16,11,8,12,0
+Gonçalo Nogueira,Vitória SC,MF,9,14,14,15,5,13,16,0
+Beni,Vitória SC,MF,7,6,6,8,9,14,12,0
+J. Gorby,SC Braga,MF,9,6,9,11,13,8,11,0
+João Moutinho,SC Braga,MF,9,14,11,12,17,14,10,0
+José Tavares,Santa Clara,MF,5,6,9,12,8,12,10,0
+Pedro Ferreira,Santa Clara,MF,7,5,8,9,10,16,10,0
+B. Aguilera,Rio Ave,MF,8,9,10,12,10,4,9,0
+A. Ntoi,Rio Ave,MF,10,10,8,6,6,12,9,0
+T. Nikitscher,Rio Ave,MF,11,8,8,7,6,15,11,0
+V. Froholdt,Porto,MF,19,12,18,19,4,10,17,0
+Gabri Veiga,Porto,MF,17,17,18,17,7,5,10,0
+A. Varela,Porto,MF,9,10,10,9,15,11,10,0
+P. Rosario,Porto,MF,15,7,12,13,18,14,14,0
+Matheus Dias,Nacional,MF,7,8,5,4,8,15,9,0
+C. Labidi,Nacional,MF,11,8,9,7,5,13,4,0
+Liziero,Nacional,MF,7,17,10,9,12,12,10,0
+M. Stjepanović,Moreirense,MF,8,5,5,3,11,9,4,0
+Rodri Alonso,Moreirense,MF,17,15,14,11,12,3,6,0
+M. De Amorim,Famalicão,MF,17,14,16,15,9,10,11,0
+T. Van De Looi,Famalicão,MF,3,6,4,4,11,7,9,0
+Robinho,Estrela Amadora,MF,8,13,11,10,7,11,7,0
+Paulo Moreira,Famalicão,MF,14,10,11,11,7,7,9,0
+A. Tsoungui,Estoril,MF,3,10,7,8,10,15,11,0
+J. Holsgrove,Estoril,MF,5,17,10,14,16,12,13,0
+João Carvalho,Estoril,MF,18,17,18,17,14,3,9,0
+S. Pérez,Casa Pia AC,MF,2,9,3,3,6,9,3,0
+E. Barrenechea,Benfica,MF,9,7,7,5,15,15,11,0
+F. Aursnes,Benfica,MF,16,15,16,14,15,9,13,0
+T. Fukui,Arouca,MF,12,14,12,13,14,12,16,0
+E. Van Ee,Arouca,MF,9,9,7,9,12,12,11,0
+S. Abdulai,Alverca,MF,5,5,7,10,4,10,14,0
+Landerson,Moreirense,AM & W,2,8,7,12,10,10,13,0
+G. Prestianni,Benfica,AM & W,12,17,16,17,12,14,15,0
+William Gomes,Porto,AM & W,19,9,17,17,12,11,10,0
+C. Nuozzi,Alverca,AM & W,6,3,6,6,6,9,10,0
+A. Schjelderup,Benfica,AM & W,18,16,17,15,12,10,15,0
+Diogo Travassos,SC Braga,AM & W,8,7,10,13,12,13,9,0
+H. Sudakov,Benfica,AM & W,12,12,10,8,15,9,9,0
+I. Stoica,Estrela Amadora,AM & W,9,6,8,8,7,9,10,0
+Lee Hyun-Ju,Arouca,AM & W,15,5,10,9,9,8,10,0
+P. Lima,Sporting CP,AM & W,8,8,5,3,10,16,10,0
+Diogo Bezerra,Rio Ave,AM & W,3,12,12,17,7,8,11,0
+Pablo Ruan,Nacional,AM & W,3,7,5,7,5,14,8,0
+Figueiredo,Alverca,AM & W,16,7,13,13,10,8,12,0
+Telmo Arcanjo,Vitória SC,AM & W,2,10,8,12,12,5,9,0
+Brenner,Santa Clara,AM & W,8,7,14,17,2,8,9,0
+Pablo Gozálbez,Arouca,AM & W,6,10,7,4,12,14,4,0
+Geny Catamo,Sporting CP,AM & W,15,14,16,16,18,10,16,0
+Sorriso,Famalicão,AM & W,13,13,12,9,10,14,10,0
+Borja Sainz,Porto,AM & W,16,7,11,6,6,14,8,0
+M. Ayomide,Estrela Amadora,AM & W,10,14,11,11,14,12,15,0
+A. Trezza,Arouca,AM & W,14,8,9,8,6,7,4,0
+Chiquinho,Alverca,AM & W,7,16,11,12,7,8,11,0
+N. Djouahra,Arouca,AM & W,8,10,6,9,12,9,10,0
+Leandro Barreiro,Benfica,AM & W,13,9,6,1,8,17,10,0
+Rodrigo Zalazar,Sporting CP,AM & W,16,16,15,13,14,11,13,0
+D. Špikić,Rio Ave,AM & W,8,12,10,12,6,9,11,0
+Vinícius Lopes,Santa Clara,AM & W,15,3,9,7,9,13,10,0
+J. Livolant,Casa Pia AC,AM & W,5,10,7,9,9,12,11,0
+Pepê,Porto,AM & W,9,11,10,12,16,9,10,0
+Gil Dias,Famalicão,AM & W,9,16,12,14,13,13,14,0
+Samu,Vitória SC,AM & W,14,8,8,3,15,16,7,0
+Kiko Bondoso,Moreirense,AM & W,1,10,5,9,13,7,11,0
+Ricardo Horta,SC Braga,AM & W,18,16,11,2,18,10,7,0
+Rafa Silva,Benfica,AM & W,19,8,12,5,13,9,11,0
+O. Camara,Vitória SC,CF,8,12,11,15,14,10,13,0
+Samu Omorodion,Porto,CF,18,6,12,8,14,6,10,0
+Pau Víctor,SC Braga,CF,14,14,15,16,16,13,13,0
+Gabriel Silva,SC Braga,CF,7,9,12,17,12,11,12,0
+D. Nandín,Arouca,CF,4,16,8,9,6,14,11,0
+A. Ndoye,Vitória SC,CF,10,7,8,4,2,13,10,0
+Y. Begraoui,Estoril,CF,16,8,12,11,13,10,8,0
+André Lacximicant,Estoril,CF,10,13,14,16,8,9,14,0
+J. Blesa,Rio Ave,CF,17,7,13,9,14,13,12,0
+Gustavo Silva,Vitória SC,CF,12,12,16,17,10,16,16,0
+Alan,Vitória SC,CF,3,15,10,15,17,7,10,0
+Iván Barbero,Arouca,CF,11,10,8,5,10,12,7,0
+V. Pavlidis,Benfica,CF,17,13,14,10,12,11,12,0
+R. Guitane,Estoril,CF,6,17,14,20,16,10,15,0
+L. Suárez,Sporting CP,CF,18,18,17,14,13,11,14,0
+Fran Navarro,SC Braga,CF,15,7,7,2,8,7,4,0
+Cassiano,Casa Pia AC,CF,8,8,4,4,3,16,7,0
+J. Castillo,Vitória SC,GK,0,0,0,0,0,0,0,10
+Rui Silva,Sporting CP,GK,0,0,0,0,0,0,0,13
+C. Miszta,Rio Ave,GK,0,0,0,0,0,0,0,10
+Diogo Costa,Porto,GK,0,0,0,0,0,0,0,14
+Kaique,Sporting CP,GK,0,0,0,0,0,0,0,14
+André Ferreira,Moreirense,GK,0,0,0,0,0,0,0,12
+L. Carević,Famalicão,GK,0,0,0,0,0,0,0,12
+Joel Robles,Estoril,GK,0,0,0,0,0,0,0,4
+P. Sequeira,Casa Pia AC,GK,0,0,0,0,0,0,0,9
+A. Trubin,Benfica,GK,0,0,0,0,0,0,0,13
+I. De Arruabarrena,Arouca,GK,0,0,0,0,0,0,0,11
+André Gomes,Casa Pia AC,GK,0,0,0,0,0,0,0,4
+Víctor Rofino,Famalicão,CB,14,16,13,12,17,11,11,0
+Emanuel Fernandes,Santa Clara,CB,17,6,14,13,12,7,10,0
+Felipe Silva,Casa Pia AC,CB,6,11,4,4,14,9,7,0
+N. Michelis,Académico de Viseu F.C.,CB,10,11,7,7,14,13,14,0
+A. Correia,Académico de Viseu F.C.,CB,12,9,11,13,11,5,8,0
+Romain Correia,Marítimo,CB,14,11,12,11,11,6,9,0
+Pedro Barcelos,Académico de Viseu F.C.,CB,6,8,9,11,14,9,9,0
+Gu Costa,Académico de Viseu F.C.,FB & WB,11,13,12,13,12,14,13,0
+Tiago Parente,Estoril,FB & WB,6,11,10,11,13,8,6,0
+Robinho,Académico de Viseu F.C.,FB & WB,5,10,6,7,17,15,10,0
+Paulo Henrique,Marítimo,FB & WB,11,10,10,9,11,13,10,0
+Igor Julião,Marítimo,FB & WB,5,6,7,12,8,15,14,0
+Tiago Brito,Estoril,MF,10,7,13,15,15,16,18,0
+Marco Cruz,Vitória SC,MF,6,8,9,9,8,11,8,0
+Dani Borges,Santa Clara,MF,19,13,13,7,12,14,12,0
+Guilherme Liberato,Moreirense,MF,4,8,7,10,11,11,12,0
+S. Messeguem,Académico de Viseu F.C.,MF,10,18,13,13,10,13,11,0
+Gabi Pereira,Casa Pia AC,MF,9,12,12,14,13,10,14,0
+V. Danilović,Marítimo,MF,5,6,5,8,16,13,13,0
+Raphael Guzzo,Marítimo,MF,15,17,14,11,16,8,7,0
+Luís Silva,Académico de Viseu F.C.,MF,8,10,4,2,9,13,6,0
+Tiago Andrade,Moreirense,AM & W,10,9,10,12,5,13,11,0
+João Rêgo,Casa Pia AC,AM & W,7,3,8,10,10,13,14,0
+Manuel Mendonça,Moreirense,AM & W,5,9,7,7,16,12,8,0
+Martín Tejón,Marítimo,AM & W,11,15,14,14,16,10,9,0
+Á. Zamora,Académico de Viseu F.C.,AM & W,17,11,13,9,10,7,6,0
+João Guilherme,Académico de Viseu F.C.,AM & W,17,12,13,9,3,14,11,0
+B. Simo,Marítimo,AM & W,16,17,13,8,15,13,10,0
+C. Kahraman,Académico de Viseu F.C.,AM & W,13,19,10,5,13,8,6,0
+L. Vonić,Moreirense,CF,10,5,7,9,13,9,9,0
+Tiago Ribeiro,Santa Clara,CF,1,17,7,10,18,11,6,0
+Adrián Butzke,Marítimo,CF,17,14,14,9,12,11,14,0
+Andre Clóvis,Académico de Viseu F.C.,CF,19,11,12,7,7,6,9,0
+Vitor Hugo,Rio Ave,GK,0,0,0,0,0,0,0,9
+Catarino Pascoal,Sporting CP,MF,14,13,16,15,10,12,13,0
+Vasconcelos,Santa Clara,AM & W,9,11,8,7,12,8,9,0
+B. Souza,Estrela Amadora,AM & W,11,12,10,12,12,14,17,0
+Martim Duarte,Arouca,GK,0,0,0,0,0,0,0,14
+Tomé Sousa,Santa Clara,GK,0,0,0,0,0,0,0,8
+Bernardo Fontes,SC Braga,GK,0,0,0,0,0,0,0,11
+Mt,Santa Clara,CB,11,13,13,13,11,9,13,0
+N. Pérez,Porto,CB,14,15,14,15,13,7,11,0
+Ulisses,Nacional,CB,15,8,12,11,10,13,10,0
+T. Borevković,Vitória SC,CB,8,7,7,7,12,11,7,0
+Nilton Varela,Marítimo,FB & WB,6,11,6,5,5,12,10,0
+Fabrício Garcia,Estoril,FB & WB,12,4,13,15,8,3,12,0
+José Gomes,Nacional,FB & WB,15,10,11,8,9,10,7,0
+Pedro Santos,Arouca,MF,5,4,8,12,15,7,6,0
+Xeka,Estoril,MF,12,13,11,8,9,10,7,0
+Óscar Aranda,Famalicão,AM & W,11,6,9,11,10,5,11,0
+Dudu Teodora,Nacional,AM & W,12,8,8,7,1,8,10,0
+Henrique Araújo,Casa Pia AC,CF,13,10,11,10,7,9,10,0
+I. Zlobin,Famalicão,GK,0,0,0,0,0,0,0,14
+Lucas França,Santa Clara,GK,0,0,0,0,0,0,0,9
+O. Lebedenko,Arouca,FB & WB,17,13,15,13,11,9,12,0
+Igor Milioransa,Académico de Viseu F.C.,FB & WB,7,6,9,10,8,9,11,0
+João Veloso,Moreirense,MF,14,15,12,8,10,5,5,0
+Vivaldo Semedo,Alverca,CF,17,12,11,7,3,11,6,0
+Gonçalo Tabuaço,Marítimo,GK,0,0,0,0,0,0,0,9
+M. Dominguez,Marítimo,AM & W,9,10,6,4,15,15,7,0
+Jhonatan,Alverca,GK,0,0,0,0,0,0,0,15
+Pedro Pacheco,Santa Clara,CB,17,13,15,13,14,10,16,0
+Matchoi Djaló,Nacional,MF,14,7,16,17,3,6,12,0
+Rochinha,Casa Pia AC,AM & W,13,6,11,9,7,9,11,0
+Paulinho,Académico de Viseu F.C.,CF,10,9,8,4,8,7,7,0
+Jo�o Gon�alves,Nacional,GK,0,0,0,0,0,0,0,6
+Ivanildo Fernandes,Nacional,CB,8,11,7,2,7,8,6,0
+Joel Silva,Nacional,MF,13,10,14,14,3,10,12,0
+Rafael Fernandes,Marítimo,CB,19,6,14,13,19,15,15,0
+S. El Karouani,Benfica,FB & WB,13,16,16,17,13,6,11,0
+Hwang In-Beom,Porto,MF,9,16,13,15,14,9,12,0
+B. Limbombe,Marítimo,AM & W,3,11,9,13,5,5,6,0
+T. Borevković,Vitória SC,CB,13,7,9,6,13,12,9,0
+S. Andreou,Estoril,CB,4,5,6,10,8,8,7,0
+O. Zych,Vitória SC,GK,0,0,0,0,0,0,0,11
+Bojang Yaya,Alverca,CB,4,15,8,8,8,10,4,0
+Diogo Nascimento,Rio Ave,MF,14,14,17,19,15,11,16,0
+N. Irankunda,Sporting CP,CF,6,14,14,19,16,14,18,0
+I. Doumbia,Sporting CP,MF,19,12,16,13,9,6,12,0
+H. Gambor,Académico de Viseu F.C.,CB,2,6,4,7,12,8,8,0
+Lucas Mincarelli,Estrela Amadora,FB & WB,5,4,8,14,12,13,14,0
+Milan Robin,Estoril,MF,10,11,12,13,8,14,13,0
+A. Camblan,Estoril,AM & W,6,11,12,16,9,8,10,0
+M. Sellouki,Rio Ave,AM & W,12,8,11,9,15,7,10,0
+N. Raveyre,Alverca,GK,0,0,0,0,0,0,0,8
+G. Szalai,Marítimo,CB,15,10,13,9,13,9,9,0
+T. Szűcs,Famalicão,MF,12,11,16,18,11,11,18,0
+S. Leković,Estrela Amadora,CB,16,12,14,12,13,11,16,0
+J. Milošević,SC Braga,CF,18,18,14,10,13,10,11,0
+Xavi Sintes,Estoril,CB,8,7,6,3,12,14,9,0
+Sergio Barcia,SC Braga,CB,12,12,12,13,13,12,13,0
+Toni Tamarit,Alverca,FB & WB,8,12,11,14,9,6,10,0
+Mario Climent,Arouca,FB & WB,6,12,11,14,9,9,10,0
+Fernando Medrano,Estoril,FB & WB,13,13,12,12,13,13,13,0
+Valery Fernández,Académico de Viseu F.C.,AM & W,1,2,1,2,4,10,6,0
+D. Sankhare,Alverca,CF,6,4,6,8,2,10,11,0
+Juan Soriano,Académico de Viseu F.C.,GK,0,0,0,0,0,0,0,12
+A. Bajrami,SC Braga,CB,11,11,13,15,12,9,11,0
+L. Zvonarek,Estrela Amadora,MF,12,9,13,13,8,5,11,0
+G. Koutsias,Famalicão,CF,6,5,7,11,9,8,12,0
+R. Jurišić,Estoril,FB & WB,11,7,13,15,16,16,19,0
+N. Omerović,Estoril,AM & W,14,8,16,17,14,10,11,0
+A. Jakupović,Vitória SC,CF,3,6,5,4,13,16,9,0
+D. Dongmo,Nacional,MF,3,8,9,14,14,11,13,0
+R. Galčík,Rio Ave,AM & W,16,13,14,12,10,4,9,0
+R. Siler,Rio Ave,CF,17,9,11,6,4,7,7,0
+S. Andersen,Sporting CP,CB,16,11,17,16,18,11,10,0
+S. Clemmensen,Rio Ave,AM & W,15,7,13,15,9,10,11,0
+Tamble Monteiro,Rio Ave,CF,17,10,13,9,8,11,11,0
+Souza,Porto,FB & WB,14,11,15,16,4,16,15,0
+Zé Rafael,Alverca,MF,13,7,13,12,8,9,14,0
+André Silva,Porto,CF,10,9,9,8,10,13,10,0
+Ryan Guilherme,Rio Ave,MF,10,12,12,14,15,13,16,0
+Gabriel Mec,Porto,AM & W,12,3,9,9,3,8,10,0
+Ismael Sierra,Estoril,CB,12,6,9,10,11,12,13,0
+Miguel Baeza,Nacional,AM & W,1,10,3,5,7,9,10,0
+N. John,Moreirense,MF,17,7,15,13,7,5,12,0
+Jos� Melro,Marítimo,CF,17,15,12,7,3,6,7,0
+Pedro Santos,Famalicão,MF,5,4,8,12,15,7,6,0
+Garcia,Famalicão,FB & WB,4,13,10,15,14,11,13,0
+David Grilo,Estrela Amadora,GK,0,0,0,0,0,0,0,14
+Diogo Pinto,Estrela Amadora,GK,0,0,0,0,0,0,0,13
+L. Ofori,Casa Pia AC,MF,7,10,7,10,13,4,9,0
+Pedro Rosas,Casa Pia AC,FB & WB,19,7,15,13,11,11,10,0
