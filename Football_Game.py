@@ -1,1257 +1,1148 @@
-#streamlit run Football_Game.py
-import streamlit as st
-import pandas as pd
+# streamlit run FMtypegame.py
+import base64
+import io
+import random
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from collections import Counter
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
+import pandas as pd
+import streamlit as st
 
-st.set_page_config(page_title="Football Club Manager", layout="wide")
+st.set_page_config(page_title="Liga Portugal Manager", page_icon="⚽", layout="wide")
 
-st.markdown("""
-    <style>
-    .stApp {
-        background-color: #E7D9B4;
-        color: #2F2A1E;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    [data-testid="stSidebar"] { display: none; }
-
-    .stat-card {
-        background-color: #F2E7C9;
-        border-radius: 8px;
-        padding: 18px 12px;
-        text-align: center;
-        border: 1px solid #C9B989;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
-        margin-bottom: 20px;
-    }
-    .stat-label {
-        color: #7A6F52;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-    }
-    .stat-value { color: #2F2A1E; font-size: 1.45rem; font-weight: 800; }
-
-    div[data-baseweb="select"] > div {
-        background-color: #F2E7C9 !important;
-        color: #2F2A1E !important;
-        border-color: #C9B989 !important;
-    }
-
-    h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown { color: #2F2A1E; }
-
-    [data-testid="stDataFrame"] { background-color: #F2E7C9; }
-
-    .roster-header {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: #7A6F52;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-    .metric-badge {
-        border-radius: 4px;
-        text-align: center;
-        padding: 2px 8px;
-        font-weight: 700;
-        font-size: 0.8rem;
-        display: inline-block;
-        min-width: 26px;
-    }
-    .match-score { font-size: 1.6rem; font-weight: 800; color: #2F2A1E; }
-
-    /* Modern HTML tables (no white background) */
-    .table-scroll { overflow-x: auto; margin-bottom: 1.2rem; border-radius: 10px; }
-    table.modern-table {
-        width: 100%;
-        border-collapse: collapse;
-        background-color: #F2E7C9;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    table.modern-table thead tr { background-color: #3B3324; }
-    table.modern-table th {
-        color: #F2E7C9;
-        text-transform: uppercase;
-        font-size: 0.68rem;
-        letter-spacing: 0.05em;
-        padding: 9px 12px;
-        text-align: left;
-        white-space: nowrap;
-    }
-    table.modern-table td {
-        padding: 7px 12px;
-        border-bottom: 1px solid #DCCB9E;
-        font-size: 0.85rem;
-        color: #2F2A1E;
-        white-space: nowrap;
-    }
-    table.modern-table tbody tr:nth-child(even) { background-color: #EADFC0; }
-    table.modern-table tbody tr:hover { background-color: #DCCB9E; }
-    table.modern-table tr.row-highlight { background-color: #C9B989 !important; font-weight: 700; }
-    </style>
-""", unsafe_allow_html=True)
-
-OUTFIELD_METRICS = ['Goal-Scoring', 'Assist-Creation', 'Attack', 'Dribbling', 'Possession', 'Defense', 'Physical']
-ABILITY_METRICS = OUTFIELD_METRICS + ['Goalkeeping']
-
-METRIC_ABBR = {
-    'Goal-Scoring': 'GS', 'Assist-Creation': 'AC', 'Attack': 'ATT', 'Dribbling': 'DRB',
-    'Possession': 'POS', 'Defense': 'DEF', 'Physical': 'PHY', 'Goalkeeping': 'GK'
-}
-
-LEAGUE_LEVELS = {
-    'Liga Portugal': 1,
-    'Liga 2': 2,
-    'Liga 3': 3,
-    'Campeonato de Portugal': 4,
-}
-
-ordered_positions = ["GK", "CB", "FB & WB", "MF", "AM & W", "CF"]
-
-SLOT_TO_POS_MAP = {
-    'GK': 'GK',
-    'CB': 'CB', 'CB1': 'CB', 'CB2': 'CB', 'CB3': 'CB',
-    'LB': 'FB & WB', 'RB': 'FB & WB', 'LWB': 'FB & WB', 'RWB': 'FB & WB',
-    'CM': 'MF', 'CM1': 'MF', 'CM2': 'MF', 'DM': 'MF', 'DM1': 'MF', 'DM2': 'MF', 'LM': 'MF', 'RM': 'MF',
-    'LW': 'AM & W', 'RW': 'AM & W', 'LAM': 'AM & W', 'CAM': 'AM & W', 'RAM': 'AM & W',
-    'ST': 'CF', 'ST1': 'CF', 'ST2': 'CF'
-}
-
-FORMATIONS = {
-    "4-3-3": {
-        'GK': (50, 10),
-        'LB': (15, 28), 'CB1': (38, 26), 'CB2': (62, 26), 'RB': (85, 28),
-        'CM1': (30, 52), 'DM': (50, 44), 'CM2': (70, 52),
-        'LW': (20, 78), 'ST': (50, 83), 'RW': (80, 78)
-    },
-    "4-4-2": {
-        'GK': (50, 10),
-        'LB': (15, 28), 'CB1': (38, 26), 'CB2': (62, 26), 'RB': (85, 28),
-        'LM': (18, 55), 'CM1': (38, 52), 'CM2': (62, 52), 'RM': (82, 55),
-        'ST1': (38, 83), 'ST2': (62, 83)
-    },
-    "3-5-2": {
-        'GK': (50, 10),
-        'CB1': (25, 25), 'CB2': (50, 23), 'CB3': (75, 25),
-        'LWB': (12, 52), 'CM1': (35, 48), 'DM': (50, 42), 'CM2': (65, 48), 'RWB': (88, 52),
-        'ST1': (38, 83), 'ST2': (62, 83)
-    },
-    "4-2-3-1": {
-        'GK': (50, 10),
-        'LB': (15, 28), 'CB1': (38, 26), 'CB2': (62, 26), 'RB': (85, 28),
-        'DM1': (38, 45), 'DM2': (62, 45),
-        'LAM': (22, 68), 'CAM': (50, 68), 'RAM': (78, 68),
-        'ST': (50, 85)
-    }
-}
-
-DEFENSIVE_STYLES = ["High Press", "Middle Block", "Low Block"]
-BUILDUP_STYLES = ["Slow Construction", "Direct Play", "Not Specific"]
-FOCUS_STYLES = ["Focus through Middle", "Focus through Wings"]
-
-ROLE_MATRIX = {
-    'CB': ['Defensive CB', 'Ball-Playing CB', 'Wide Progressor CB'],
-    'FB & WB': ['Defensive FB', 'Attacking FB', 'Playmaker FB'],
-    'MF': ['Defensive MF', 'Ball Winner MF', 'Box-to-Box', 'Deep Lying Playmaker', 'Advanced Playmaker', 'Box Crasher'],
-    'AM & W': ['Playmaker', 'Winger', 'Inside Forward'],
-    'CF': ['Poacher', 'Pressing CF', 'False 9', 'Second Striker', 'Link-Up Forward'],
-}
-
-ROLE_METRIC_WEIGHTS = {
-    'Defensive CB': {'Defense': 0.5, 'Physical': 0.3, 'Possession': 0.2},
-    'Ball-Playing CB': {'Possession': 0.4, 'Defense': 0.35, 'Attack': 0.15, 'Dribbling': 0.1},
-    'Wide Progressor CB': {'Possession': 0.3, 'Dribbling': 0.25, 'Defense': 0.25, 'Physical': 0.2},
-
-    'Defensive FB': {'Defense': 0.5, 'Physical': 0.3, 'Possession': 0.2},
-    'Attacking FB': {'Attack': 0.3, 'Dribbling': 0.25, 'Assist-Creation': 0.25, 'Physical': 0.2},
-    'Playmaker FB': {'Possession': 0.35, 'Assist-Creation': 0.3, 'Dribbling': 0.2, 'Defense': 0.15},
-
-    'Defensive MF': {'Defense': 0.45, 'Physical': 0.3, 'Possession': 0.25},
-    'Ball Winner MF': {'Defense': 0.5, 'Physical': 0.35, 'Possession': 0.15},
-    'Box-to-Box': {'Physical': 0.25, 'Defense': 0.2, 'Attack': 0.2, 'Possession': 0.2, 'Dribbling': 0.15},
-    'Deep Lying Playmaker': {'Possession': 0.4, 'Assist-Creation': 0.3, 'Defense': 0.15, 'Dribbling': 0.15},
-    'Advanced Playmaker': {'Assist-Creation': 0.4, 'Possession': 0.25, 'Dribbling': 0.2, 'Attack': 0.15},
-    'Box Crasher': {'Attack': 0.35, 'Goal-Scoring': 0.3, 'Physical': 0.2, 'Dribbling': 0.15},
-
-    'Playmaker': {'Assist-Creation': 0.4, 'Possession': 0.3, 'Dribbling': 0.3},
-    'Winger': {'Dribbling': 0.4, 'Attack': 0.3, 'Physical': 0.15, 'Assist-Creation': 0.15},
-    'Inside Forward': {'Attack': 0.35, 'Goal-Scoring': 0.35, 'Dribbling': 0.3},
-
-    'Poacher': {'Goal-Scoring': 0.6, 'Attack': 0.25, 'Physical': 0.15},
-    'Pressing CF': {'Physical': 0.35, 'Defense': 0.25, 'Attack': 0.25, 'Goal-Scoring': 0.15},
-    'False 9': {'Assist-Creation': 0.35, 'Possession': 0.35, 'Goal-Scoring': 0.3},
-    'Second Striker': {'Goal-Scoring': 0.35, 'Assist-Creation': 0.3, 'Dribbling': 0.2, 'Attack': 0.15},
-    'Link-Up Forward': {'Possession': 0.35, 'Assist-Creation': 0.3, 'Attack': 0.2, 'Physical': 0.15},
-}
-
-ROLE_TEAM_EFFECT = {
-    'Defensive CB': (-0.02, 0.05), 'Ball-Playing CB': (0.02, 0.02), 'Wide Progressor CB': (0.04, 0.0),
-    'Defensive FB': (-0.02, 0.04), 'Attacking FB': (0.05, -0.02), 'Playmaker FB': (0.03, 0.0),
-    'Defensive MF': (-0.02, 0.05), 'Ball Winner MF': (-0.01, 0.05), 'Box-to-Box': (0.02, 0.02),
-    'Deep Lying Playmaker': (0.03, 0.01), 'Advanced Playmaker': (0.05, -0.01), 'Box Crasher': (0.05, -0.02),
-    'Playmaker': (0.05, -0.01), 'Winger': (0.05, -0.02), 'Inside Forward': (0.06, -0.02),
-    'Poacher': (0.06, -0.02), 'Pressing CF': (0.03, 0.02), 'False 9': (0.04, 0.0),
-    'Second Striker': (0.05, -0.01), 'Link-Up Forward': (0.03, 0.0),
-}
-
-MAX_SUBS_PER_GAME = 5
-ASSIST_PROBABILITY = 0.75
-
-
-def format_eur(value):
-    if pd.isna(value):
-        return "—"
-    if value >= 1_000_000:
-        return f"€{value / 1_000_000:.2f}M"
-    if value >= 1_000:
-        return f"€{value / 1_000:.0f}K"
-    return f"€{value:.0f}"
-
-
-def relevant_metrics(position):
-    if position == 'GK':
-        return ['Goalkeeping']
-    return OUTFIELD_METRICS
-
-
-def prepare_metrics_display(df):
-    df = df.copy()
-    is_gk = df['Position'] == 'GK'
-    for m in OUTFIELD_METRICS:
-        df.loc[is_gk, m] = np.nan
-    df.loc[~is_gk, 'Goalkeeping'] = np.nan
-    return df
-
-
-def get_metric_color(value):
-    """0-100 quality scale: red -> orange -> yellow -> light green -> dark green."""
-    if value < 20:
-        return '#E74C3C', '#FFFFFF'
-    elif value < 40:
-        return '#E67E22', '#FFFFFF'
-    elif value < 60:
-        return '#F1C40F', '#2F2A1E'
-    elif value < 80:
-        return '#8BC34A', '#1B3B0F'
-    else:
-        return '#2E7D32', '#FFFFFF'
-
-
-def get_rating_color(value):
-    """0-10 match rating scale, centered so ~6.0 reads as an 'average' yellow/green."""
-    if value < 5:
-        return '#E74C3C', '#FFFFFF'
-    elif value < 6:
-        return '#E67E22', '#FFFFFF'
-    elif value < 7:
-        return '#F1C40F', '#2F2A1E'
-    elif value < 8:
-        return '#8BC34A', '#1B3B0F'
-    else:
-        return '#2E7D32', '#FFFFFF'
-
-
-def df_to_html_table(df, badge_cols=None, badge_color_func=get_metric_color, highlight_col=None, highlight_val=None):
-    """Renders a DataFrame as a modern, non-white HTML table. badge_cols is a dict of
-    {column_name: decimal_places} for columns that should render as colored badges."""
-    badge_cols = badge_cols or {}
-    html = "<div class='table-scroll'><table class='modern-table'><thead><tr>"
-    for col in df.columns:
-        html += f"<th>{col}</th>"
-    html += "</tr></thead><tbody>"
-    for _, row in df.iterrows():
-        row_cls = "row-highlight" if highlight_col and row.get(highlight_col) == highlight_val else ""
-        html += f"<tr class='{row_cls}'>"
-        for col in df.columns:
-            val = row[col]
-            if col in badge_cols and pd.notna(val):
-                try:
-                    fv = float(val)
-                    bg, fg = badge_color_func(fv)
-                    dec = badge_cols[col]
-                    html += f"<td><span class='metric-badge' style='background:{bg};color:{fg};'>{fv:.{dec}f}</span></td>"
-                    continue
-                except (ValueError, TypeError):
-                    pass
-            html += f"<td>{val}</td>"
-        html += "</tr>"
-    html += "</tbody></table></div>"
-    st.markdown(html, unsafe_allow_html=True)
-
-
-def adjust_ratings_for_league_step(player, destination_league):
+st.markdown(
     """
-    Discounts a signed player's ability metrics by 15% per league level stepped up
-    (compounding), since a rating earned in a weaker league overstates true ability
-    at a higher level. Liga Revelação U23 is not part of this tiering.
-    """
-    adjusted = dict(player)
-    origin_level = LEAGUE_LEVELS.get(player.get('League'))
-    dest_level = LEAGUE_LEVELS.get(destination_league)
-
-    if origin_level is not None and dest_level is not None and origin_level > dest_level:
-        levels_stepped = origin_level - dest_level
-        multiplier = 0.85 ** levels_stepped
-        for metric in ABILITY_METRICS:
-            if metric in adjusted and pd.notna(adjusted[metric]):
-                adjusted[metric] = adjusted[metric] * multiplier
-
-    return adjusted
-
-
-def get_tactic_modifiers():
-    defensive = st.session_state.get('tactic_defensive', 'Middle Block')
-    buildup = st.session_state.get('tactic_buildup', 'Not Specific')
-
-    attack_mod = 0.0
-    defense_mod = 0.0
-
-    if defensive == 'High Press':
-        attack_mod += 0.10
-        defense_mod -= 0.05
-    elif defensive == 'Low Block':
-        attack_mod -= 0.05
-        defense_mod += 0.15
-
-    if buildup == 'Direct Play':
-        attack_mod += 0.10
-    elif buildup == 'Slow Construction':
-        attack_mod -= 0.03
-        defense_mod += 0.03
-
-    return attack_mod, defense_mod
-
-
-def get_role_modifiers():
-    roles = st.session_state.get('starting_roles', {})
-    if not roles:
-        return 0.0, 0.0
-
-    attack_total, defense_total, n = 0.0, 0.0, 0
-    for role in roles.values():
-        eff = ROLE_TEAM_EFFECT.get(role)
-        if eff is None:
-            continue
-        attack_total += eff[0]
-        defense_total += eff[1]
-        n += 1
-
-    if n == 0:
-        return 0.0, 0.0
-    return attack_total / n, defense_total / n
-
-
-def compute_player_rating(player, team_gf, team_ga, role=None):
-    """Synthetic match rating (3.0-10.0). Centered so that an average-quality
-    player (50/100) in a drawn match scores ~6.0."""
-    if player.get('Position') == 'GK':
-        quality = player.get('Goalkeeping', 50)
-        quality = 50 if pd.isna(quality) else quality
-    else:
-        weights = ROLE_METRIC_WEIGHTS.get(role)
-        if weights:
-            weighted_sum, total_w = 0.0, 0.0
-            for metric, w in weights.items():
-                val = player.get(metric)
-                if pd.notna(val):
-                    weighted_sum += val * w
-                    total_w += w
-            quality = (weighted_sum / total_w) if total_w > 0 else 50.0
-        else:
-            vals = [player.get(m) for m in OUTFIELD_METRICS if pd.notna(player.get(m))]
-            quality = float(np.mean(vals)) if vals else 50.0
-
-    base = 6.0 + (quality - 50.0) * 0.04 
-
-    if team_gf > team_ga:
-        result_adj = np.random.uniform(0.2, 0.6)
-    elif team_gf < team_ga:
-        result_adj = -np.random.uniform(0.2, 0.6)
-    else:
-        result_adj = np.random.uniform(-0.1, 0.1)
-
-    noise = np.random.normal(0, 0.3)
-    rating = float(np.clip(base + result_adj + noise, 3.0, 10.0))
-    return round(rating, 1)
-
-
-def get_xi_players():
-    result = []
-    for slot, pname in st.session_state.get('starting_xi', {}).items():
-        p = next((pl for pl in st.session_state.active_squad if pl['Display_Name'] == pname), None)
-        if p:
-            role = st.session_state.get('starting_roles', {}).get(slot)
-            result.append((slot, p, role))
-    return result
-
-
-def get_bench_players():
-    starters = set(st.session_state.get('starting_xi', {}).values())
-    return [p for p in st.session_state.active_squad if p['Display_Name'] not in starters]
-
-
-def simulate_match_squad(xi_players):
-    """Simulates up to MAX_SUBS_PER_GAME substitutions (GKs are never subbed).
-    Returns (involved, events) where involved = [(player_dict, role), ...] for
-    everyone who featured, and events describe each swap."""
-    bench = get_bench_players()
-    outfield_idxs = [i for i, (slot, p, role) in enumerate(xi_players) if p.get('Position') != 'GK']
-    np.random.shuffle(outfield_idxs)
-
-    max_subs = min(MAX_SUBS_PER_GAME, len(outfield_idxs))
-    num_subs = np.random.randint(0, max_subs + 1) if max_subs > 0 else 0
-
-    events = []
-    used_bench = set()
-    involved = [(p, role) for (slot, p, role) in xi_players]
-
-    subs_done = 0
-    for i in outfield_idxs:
-        if subs_done >= num_subs:
-            break
-        slot, starter, role = xi_players[i]
-        candidates = [b for b in bench if b.get('Position') == starter.get('Position') and b['Display_Name'] not in used_bench]
-        if not candidates:
-            continue
-        sub_player = candidates[np.random.randint(len(candidates))]
-        used_bench.add(sub_player['Display_Name'])
-        events.append({'out': starter['Player'], 'in': sub_player['Player']})
-        involved.append((sub_player, role))
-        subs_done += 1
-
-    return involved, events
-
-
-def _weighted_pick(candidates_players_roles, metric, exclude_name=None):
-    """Weighted-random pick of a player name based on a metric value + role emphasis."""
-    names, weights = [], []
-    for p, role in candidates_players_roles:
-        if exclude_name is not None and p['Player'] == exclude_name:
-            continue
-        val = p.get(metric, 50)
-        val = 50 if pd.isna(val) else val
-        role_w = ROLE_METRIC_WEIGHTS.get(role, {}).get(metric, 0.05)
-        w = max((role_w + 0.05) * (val / 100.0 + 0.1), 0.01)
-        names.append(p['Player'])
-        weights.append(w)
-    if not names:
-        return None
-    weights = np.array(weights)
-    weights = weights / weights.sum()
-    return str(np.random.choice(names, p=weights))
-
-
-def generate_match_report(gf, ga, involved):
-    """Possession / shots / shots on target / goal events (scorer + optional assist)
-    for the user's match, based on the quality of everyone who featured."""
-    outfield = [(p, role) for p, role in involved if p.get('Position') != 'GK']
-
-    if outfield:
-        poss_vals = [p.get('Possession') for p, role in outfield if pd.notna(p.get('Possession'))]
-        avg_poss = float(np.mean(poss_vals)) if poss_vals else 50.0
-
-        attack_vals = []
-        for p, role in outfield:
-            vals = [p.get(m) for m in ['Attack', 'Goal-Scoring', 'Dribbling'] if pd.notna(p.get(m))]
-            if vals:
-                attack_vals.append(float(np.mean(vals)))
-        avg_attack = float(np.mean(attack_vals)) if attack_vals else 50.0
-    else:
-        avg_poss, avg_attack = 50.0, 50.0
-
-    poss_for = float(np.clip(50 + (avg_poss - 50) * 0.4 + np.random.uniform(-3, 3), 25, 75))
-    poss_for = round(poss_for, 1)
-    poss_against = round(100 - poss_for, 1)
-
-    shots_for = int(np.random.poisson(max(1.0, 8 + (avg_attack - 50) / 8)))
-    shots_for = max(shots_for, gf)
-    sot_for = min(shots_for, gf + int(np.random.poisson(2)))
-    sot_for = max(sot_for, gf)
-
-    shots_against = int(np.random.poisson(8))
-    shots_against = max(shots_against, ga)
-    sot_against = min(shots_against, ga + int(np.random.poisson(2)))
-    sot_against = max(sot_against, ga)
-
-    goal_events = []
-    if gf > 0 and outfield:
-        for _ in range(gf):
-            scorer = _weighted_pick(outfield, 'Goal-Scoring')
-            assist = None
-            if scorer and np.random.rand() < ASSIST_PROBABILITY and len(outfield) > 1:
-                assist = _weighted_pick(outfield, 'Assist-Creation', exclude_name=scorer)
-            goal_events.append({'scorer': scorer, 'assist': assist})
-
-    return {
-        'possession_for': poss_for, 'possession_against': poss_against,
-        'shots_for': shots_for, 'sot_for': sot_for,
-        'shots_against': shots_against, 'sot_against': sot_against,
-        'goal_events': goal_events
-    }
-
-
-def simulate_user_match_extras(gf, ga, matchday_num, opponent, is_home):
-    """Runs substitutions + match report + player ratings (with goals/assists) for
-    the user's team for one matchday, and appends the results to session state."""
-    xi_players = get_xi_players()
-    if not xi_players:
-        return
-    involved, sub_events = simulate_match_squad(xi_players)
-
-    report = generate_match_report(gf, ga, involved)
-    report.update({
-        'Matchday': matchday_num, 'GF': gf, 'GA': ga,
-        'opponent': opponent, 'is_home': is_home, 'substitutions': sub_events
-    })
-    st.session_state.match_reports.append(report)
-
-    goals_count = Counter(g['scorer'] for g in report['goal_events'] if g['scorer'])
-    assists_count = Counter(g['assist'] for g in report['goal_events'] if g['assist'])
-
-    for p, role in involved:
-        rating = compute_player_rating(p, gf, ga, role=role)
-        st.session_state.player_ratings_log.append({
-            'Player': p['Player'], 'Position': p['Position'], 'Role': role or '-',
-            'Matchday': matchday_num, 'Rating': rating,
-            'Goals': goals_count.get(p['Player'], 0),
-            'Assists': assists_count.get(p['Player'], 0)
-        })
-
-
-def generate_round_robin(teams):
-    """Circle-method double round-robin: every team plays every other team home
-    and away. Returns a list of rounds, each a list of (home, away) tuples."""
-    teams = list(teams)
-    bye = None
-    if len(teams) % 2 != 0:
-        bye = "__BYE__"
-        teams.append(bye)
-
-    n = len(teams)
-    rotation = teams.copy()
-    first_half = []
-    for _ in range(n - 1):
-        round_matches = []
-        for i in range(n // 2):
-            home, away = rotation[i], rotation[n - 1 - i]
-            if bye not in (home, away):
-                round_matches.append((home, away))
-        first_half.append(round_matches)
-        rotation = [rotation[0]] + [rotation[-1]] + rotation[1:-1]
-
-    second_half = [[(away, home) for (home, away) in rnd] for rnd in first_half]
-    return first_half + second_half
-
-
-def simulate_matchday_fixtures(df_stand, round_matches, attack_mod, defense_mod, managed_team, md_num):
-    """Simulates every fixture in this round as a real home-vs-away match, updating
-    both teams' standings rows and the league-wide results log."""
-    user_gf, user_ga, user_opponent, user_is_home = None, None, None, None
-    base_home, base_away = 1.35, 1.05
-
-    for home, away in round_matches:
-        home_is_user = home == managed_team
-        away_is_user = away == managed_team
-
-        home_lambda, away_lambda = base_home, base_away
-        if home_is_user:
-            home_lambda = base_home + attack_mod
-            away_lambda = max(0.1, base_away - defense_mod)
-        elif away_is_user:
-            away_lambda = base_away + attack_mod
-            home_lambda = max(0.1, base_home - defense_mod)
-
-        gf_home = int(np.random.poisson(max(0.1, home_lambda)))
-        gf_away = int(np.random.poisson(max(0.1, away_lambda)))
-
-        h_idx = df_stand.index[df_stand['Team'] == home]
-        a_idx = df_stand.index[df_stand['Team'] == away]
-        if len(h_idx) == 0 or len(a_idx) == 0:
-            continue
-        h_idx, a_idx = h_idx[0], a_idx[0]
-
-        df_stand.loc[h_idx, 'MP'] += 1
-        df_stand.loc[a_idx, 'MP'] += 1
-        df_stand.loc[h_idx, 'GF'] += gf_home
-        df_stand.loc[h_idx, 'GA'] += gf_away
-        df_stand.loc[a_idx, 'GF'] += gf_away
-        df_stand.loc[a_idx, 'GA'] += gf_home
-        df_stand.loc[h_idx, 'GD'] = df_stand.loc[h_idx, 'GF'] - df_stand.loc[h_idx, 'GA']
-        df_stand.loc[a_idx, 'GD'] = df_stand.loc[a_idx, 'GF'] - df_stand.loc[a_idx, 'GA']
-
-        if gf_home > gf_away:
-            df_stand.loc[h_idx, 'W'] += 1
-            df_stand.loc[h_idx, 'Pts'] += 3
-            df_stand.loc[a_idx, 'L'] += 1
-        elif gf_home < gf_away:
-            df_stand.loc[a_idx, 'W'] += 1
-            df_stand.loc[a_idx, 'Pts'] += 3
-            df_stand.loc[h_idx, 'L'] += 1
-        else:
-            df_stand.loc[h_idx, 'D'] += 1
-            df_stand.loc[h_idx, 'Pts'] += 1
-            df_stand.loc[a_idx, 'D'] += 1
-            df_stand.loc[a_idx, 'Pts'] += 1
-
-        st.session_state.all_results.append({
-            'Matchday': md_num, 'home': home, 'away': away,
-            'home_goals': gf_home, 'away_goals': gf_away
-        })
-
-        if home_is_user or away_is_user:
-            user_is_home = home_is_user
-            user_opponent = away if home_is_user else home
-            user_gf = gf_home if home_is_user else gf_away
-            user_ga = gf_away if home_is_user else gf_home
-
-    return df_stand, user_gf, user_ga, user_opponent, user_is_home
-
-
-def generate_league_transfers(league, league_teams, managed_team):
-    """Simulates a one-off summer transfer market across the selected league:
-    players moving between AI-controlled clubs (and up from lower tiers), for
-    display only. The user's own club is excluded - those moves are made
-    manually in the Scouting & Transfers tab."""
-    dest_level = LEAGUE_LEVELS.get(league)
-    if dest_level is not None:
-        feeder_leagues = [league] + [lg for lg, lvl in LEAGUE_LEVELS.items() if lvl > dest_level]
-    else:
-        feeder_leagues = [league]
-
-    candidate_pool = df_all[df_all['League'].isin(feeder_leagues)].copy()
-    candidate_pool = candidate_pool[candidate_pool['Team'] != managed_team]
-
-    other_teams = [t for t in league_teams if t != managed_team]
-    if candidate_pool.empty or len(other_teams) < 2:
-        return []
-
-    num_transfers = int(np.random.randint(10, 21))
-    transfers = []
-    used_players = set()
-    attempts = 0
-
-    while len(transfers) < num_transfers and attempts < num_transfers * 6:
-        attempts += 1
-        player_row = candidate_pool.sample(1).iloc[0]
-        if player_row['Player'] in used_players:
-            continue
-        origin_team = player_row['Team']
-        possible_dest = [t for t in other_teams if t != origin_team]
-        if not possible_dest:
-            continue
-        dest_team = str(np.random.choice(possible_dest))
-
-        fee = player_row['Cost']
-        origin_level = LEAGUE_LEVELS.get(player_row['League'])
-        if origin_level is not None and dest_level is not None and origin_level > dest_level:
-            fee = fee * (0.85 ** (origin_level - dest_level))
-
-        transfers.append({
-            'Player': player_row['Player'], 'Position': player_row['Position'],
-            'From Team': origin_team, 'From League': player_row['League'],
-            'To Team': dest_team, 'Fee': fee
-        })
-        used_players.add(player_row['Player'])
-
-    return transfers
-
-
-def build_new_season_state(league, teams, managed_team):
-    schedule = generate_round_robin(teams)
-    total_md = len(schedule)
-    standings = pd.DataFrame({
-        'Team': teams, 'MP': 0, 'W': 0, 'D': 0, 'L': 0, 'GF': 0, 'GA': 0, 'GD': 0, 'Pts': 0
-    })
-    transfers = generate_league_transfers(league, teams, managed_team)
-    return schedule, total_md, standings, transfers
-
-@st.cache_data
-def load_and_value_dataset():
-    df = pd.read_csv("DATA_git.csv")
-
-    league_target_means = {
-        'Liga Portugal': 3800000.0,
-        'Liga 2': 200000.0,
-        'Liga 3': 25000.0,
-        'Campeonato de Portugal': 10000.0,
-        'Liga Revelação U23': 30000.0
-    }
-
-    ability_metrics = ABILITY_METRICS
-
-    df['Known_Value'] = df['Cost'].fillna(df['Sale'])
-
-    features = ['Age', 'Position', 'League'] + ability_metrics
-    numeric_features = ['Age'] + ability_metrics
-    categorical_features = ['Position', 'League']
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', SimpleImputer(strategy='constant', fill_value=0), numeric_features),
-            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
-        ])
-
-    model = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('regressor', RandomForestRegressor(n_estimators=100, random_state=42, min_samples_leaf=2))
-    ])
-
-    train_df = df[df['Known_Value'].notna() & (df['Known_Value'] > 0)]
-    model.fit(train_df[features], train_df['Known_Value'])
-
-    df['Predicted_Val'] = model.predict(df[features])
-    df['Market_Value'] = df['Known_Value'].fillna(df['Predicted_Val'])
-
-    for league, target_mean in league_target_means.items():
-        mask = df['League'] == league
-        if mask.any():
-            curr_mean = df.loc[mask, 'Market_Value'].mean()
-            if curr_mean > 0:
-                df.loc[mask, 'Market_Value'] *= (target_mean / curr_mean)
-
-    df['Market_Value'] = df['Market_Value'].apply(lambda x: max(x, 5000.0))
-
-    df['Cost'] = df['Market_Value'] * 1.15
-    df['Sale'] = df['Market_Value'] * 0.85
-
-    df['Display_Name'] = df.apply(
-        lambda row: f"{row['Player']} ({row['Position']} | Age {int(row['Age'])} | {row['Team']})", axis=1
-    )
-    return df
-
-df_all = load_and_value_dataset()
-
-st.markdown("## ⚽ Football Manager")
-
-col_filter1, col_filter2 = st.columns(2)
-
-with col_filter1:
-    leagues = sorted(df_all["League"].dropna().unique().tolist())
-    selected_league = st.selectbox("Select League", leagues)
-
-league_df = df_all[df_all["League"] == selected_league]
-
-with col_filter2:
-    available_teams = sorted(league_df["Team"].dropna().unique().tolist())
-    selected_team = st.selectbox("Managed Club", available_teams)
-
-st.divider()
-
-if 'player_ratings_log' not in st.session_state:
-    st.session_state.player_ratings_log = []
-if 'match_reports' not in st.session_state:
-    st.session_state.match_reports = []
-if 'all_results' not in st.session_state:
-    st.session_state.all_results = []
-
-if 'current_league' not in st.session_state or st.session_state.current_league != selected_league:
-    st.session_state.current_league = selected_league
-    schedule, total_md, standings, transfers = build_new_season_state(selected_league, available_teams, selected_team)
-    st.session_state.schedule = schedule
-    st.session_state.total_matchdays = total_md
-    st.session_state.league_standings = standings
-    st.session_state.matchday = 1
-    st.session_state.all_results = []
-    st.session_state.league_transfers = transfers
-
-if 'user_team' not in st.session_state or st.session_state.user_team != selected_team:
-    st.session_state.user_team = selected_team
-    squad_base = df_all[(df_all['Team'] == selected_team) & (df_all['Season'] == '2025/26')].copy()
-    if squad_base.empty:
-        squad_base = df_all[df_all['Team'] == selected_team].copy()
-
-    st.session_state.active_squad = squad_base.to_dict('records')
-    total_val = sum(p['Market_Value'] for p in st.session_state.active_squad)
-    st.session_state.budget = total_val * 0.25
-    st.session_state.starting_xi = {}
-    st.session_state.starting_roles = {}
-    st.session_state.xi_confirmed = False
-    st.session_state.player_ratings_log = []
-    st.session_state.match_reports = []
-
-    schedule, total_md, standings, transfers = build_new_season_state(selected_league, available_teams, selected_team)
-    st.session_state.schedule = schedule
-    st.session_state.total_matchdays = total_md
-    st.session_state.league_standings = standings
-    st.session_state.matchday = 1
-    st.session_state.all_results = []
-    st.session_state.league_transfers = transfers
-
-squad_df = pd.DataFrame(st.session_state.active_squad)
-current_squad_value = squad_df['Market_Value'].sum() if not squad_df.empty else 0
-
-c1, c2, c3, c4 = st.columns(4)
-
-c1.markdown(f"""
-    <div class="stat-card"><div class="stat-label">MANAGED CLUB</div>
-    <div class="stat-value">{selected_team}</div></div>
-""", unsafe_allow_html=True)
-
-c2.markdown(f"""
-    <div class="stat-card"><div class="stat-label">TRANSFER BUDGET</div>
-    <div class="stat-value">€ {st.session_state.budget:,.0f}</div></div>
-""", unsafe_allow_html=True)
-
-c3.markdown(f"""
-    <div class="stat-card"><div class="stat-label">SQUAD VALUE</div>
-    <div class="stat-value">€ {current_squad_value:,.0f}</div></div>
-""", unsafe_allow_html=True)
-
-c4.markdown(f"""
-    <div class="stat-card"><div class="stat-label">SQUAD SIZE</div>
-    <div class="stat-value">{len(squad_df)}</div></div>
-""", unsafe_allow_html=True)
-
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "👥 Squad Roster",
-    "📋 Starting XI & Tactics",
-    "🔄 Scouting & Transfers",
-    "⚽ Matchday Simulation",
-    "📊 League Player Stats",
-    "💼 League Transfer Market"
-])
-
-with tab1:
-    st.subheader(f"👥 Roster Management - {selected_team}")
-
-    if not squad_df.empty:
-        pos_order_map = {"GK": 1, "CB": 2, "FB & WB": 3, "MF": 4, "AM & W": 5, "CF": 6}
-        squad_df['pos_rank'] = squad_df['Position'].map(pos_order_map).fillna(99)
-        squad_df = squad_df.sort_values(by=['pos_rank', 'Market_Value'], ascending=[True, False]).reset_index(drop=True)
-
-        col_widths = [0.55, 2.0, 0.5] + [0.55] * len(ABILITY_METRICS) + [1.0, 1.0, 0.8]
-        headers = ['Pos', 'Player', 'Age'] + [METRIC_ABBR[m] for m in ABILITY_METRICS] + ['Value', 'Sale', '']
-
-        if len(squad_df) <= 11:
-            st.caption("⚠️ Squad is at the 11-player minimum — the sell button is disabled until you sign a replacement.")
-
-        header_cols = st.columns(col_widths)
-        for hc, h in zip(header_cols, headers):
-            hc.markdown(f"<span class='roster-header'>{h}</span>", unsafe_allow_html=True)
-
-        for idx, row in squad_df.iterrows():
-            with st.container(border=True):
-                row_cols = st.columns(col_widths)
-                row_cols[0].write(row['Position'])
-                row_cols[1].write(row['Player'])
-                row_cols[2].write(int(row['Age']))
-
-                rel_metrics = relevant_metrics(row['Position'])
-                for i, metric in enumerate(ABILITY_METRICS):
-                    val = row[metric]
-                    if metric in rel_metrics and pd.notna(val):
-                        bg, fg = get_metric_color(val)
-                        row_cols[3 + i].markdown(
-                            f"<div class='metric-badge' style='background:{bg};color:{fg};'>{val:.0f}</div>",
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        row_cols[3 + i].markdown(
-                            "<div class='metric-badge' style='color:#9a917a;'>—</div>",
-                            unsafe_allow_html=True
-                        )
-
-                row_cols[3 + len(ABILITY_METRICS)].write(format_eur(row['Market_Value']))
-                row_cols[3 + len(ABILITY_METRICS) + 1].write(format_eur(row['Sale']))
-
-                sell_disabled = len(squad_df) <= 11
-                if row_cols[3 + len(ABILITY_METRICS) + 2].button("Sell", key=f"sell_{row['Display_Name']}_{idx}", disabled=sell_disabled):
-                    st.session_state.active_squad = [
-                        p for p in st.session_state.active_squad if p['Display_Name'] != row['Display_Name']
-                    ]
-                    st.session_state.budget += row['Sale']
-                    st.success(f"Successfully sold {row['Player']} for {format_eur(row['Sale'])}!")
-                    st.rerun()
-    else:
-        st.warning("No player data available for this team.")
-
-with tab2:
-    st.subheader("📋 Tactical Setup & Pitch Lineup")
-
-    col_t1, col_t2 = st.columns([1, 2])
-
-    with col_t1:
-        st.markdown("### ⚙️ Tactical Setup")
-        formation_choice = st.selectbox("Select Formation:", list(FORMATIONS.keys()))
-        slots = FORMATIONS[formation_choice]
-
-        st.markdown("### 🧠 Team Identity")
-        st.selectbox("Defensive Approach:", DEFENSIVE_STYLES, key="tactic_defensive")
-        st.selectbox("Build-Up Style:", BUILDUP_STYLES, key="tactic_buildup")
-        st.selectbox("Attacking Focus:", FOCUS_STYLES, key="tactic_focus")
-
-        st.markdown("### 🎯 Assign Starting XI & Roles")
-        current_xi = {}
-        current_roles = {}
-        assigned_players = set()
-
-        for slot in slots.keys():
-            req_pos = SLOT_TO_POS_MAP[slot]
-            eligible_players = [
-                p for p in st.session_state.active_squad
-                if p['Position'] == req_pos and p['Display_Name'] not in assigned_players
-            ]
-            options = ["-- Select Player --"] + [p['Display_Name'] for p in eligible_players]
-
-            player_col, role_col = st.columns([1.4, 1])
-            selected_player = player_col.selectbox(
-                f"{slot} ({req_pos})",
-                options=options,
-                key=f"slot_select_{formation_choice}_{slot}"
-            )
-
-            if selected_player != "-- Select Player --":
-                current_xi[slot] = selected_player
-                assigned_players.add(selected_player)
-
-            if req_pos in ROLE_MATRIX:
-                role_options = ["-- Select Role --"] + ROLE_MATRIX[req_pos]
-                selected_role = role_col.selectbox(
-                    "Role",
-                    options=role_options,
-                    key=f"role_select_{formation_choice}_{slot}",
-                    label_visibility="hidden" if slot != list(slots.keys())[0] else "visible"
-                )
-                if selected_role != "-- Select Role --":
-                    current_roles[slot] = selected_role
-
-        st.markdown("---")
-        if st.button("✅ Confirm Starting XI Lineup", type="primary", use_container_width=True):
-            role_slots_needed = [s for s in slots if SLOT_TO_POS_MAP[s] != 'GK']
-            missing_roles = [s for s in role_slots_needed if current_roles.get(s) is None]
-
-            if len(current_xi) != len(slots):
-                st.error(f"Please assign all {len(slots)} positions before confirming.")
-            elif missing_roles:
-                st.error(f"Please assign a role for: {', '.join(missing_roles)}")
-            else:
-                st.session_state.starting_xi = current_xi
-                st.session_state.starting_roles = current_roles
-                st.session_state.xi_confirmed = True
-                st.success("Starting XI Lineup & Roles Confirmed & Saved!")
-
-        if st.session_state.xi_confirmed:
-            st.info("🟢 Status: Starting XI Lineup Confirmed (squad locked — transfer market closed)")
-        else:
-            st.warning("🟠 Status: Lineup Pending Confirmation")
-
-        st.caption(f"During simulation, up to {MAX_SUBS_PER_GAME} substitutions may be made per match "
-                   f"from your bench (goalkeepers are not substituted).")
-
-    with col_t2:
-        st.markdown(f"### 🏟️ Pitch View - {formation_choice}")
-
-        fig, ax = plt.subplots(figsize=(8, 10))
-        fig.patch.set_facecolor('#2e8b57')
-        ax.set_facecolor('#2e8b57')
-
-        ax.plot([0, 100, 100, 0, 0], [0, 0, 100, 100, 0], color="white", lw=2)
-        ax.plot([0, 100], [50, 50], color="white", lw=2)
-        center_circle = patches.Circle((50, 50), 10, color="white", fill=False, lw=2)
-        ax.add_patch(center_circle)
-
-        ax.add_patch(patches.Rectangle((22, 0), 56, 18, color="white", fill=False, lw=2))
-        ax.add_patch(patches.Rectangle((22, 82), 56, 18, color="white", fill=False, lw=2))
-
-        for slot, (x, y) in slots.items():
-            player_name = current_xi.get(slot, "Empty")
-            display_str = player_name.split(" (")[0] if " (" in player_name else player_name
-            role_str = current_roles.get(slot, "")
-            label = f"{display_str}\n{role_str}" if role_str else display_str
-
-            ax.scatter(x, y, color="gold" if player_name != "Empty" else "grey", s=500, zorder=3, edgecolors='black')
-            ax.text(x, y, slot, color="black", fontsize=8, weight="bold", ha="center", va="center", zorder=4)
-            ax.text(x, y - 4.5, label, color="white", fontsize=7.5, weight="bold", ha="center", va="center",
-                    bbox=dict(boxstyle="round,pad=0.2", facecolor="black", alpha=0.6))
-
-        ax.set_xlim(-5, 105)
-        ax.set_ylim(-5, 105)
-        plt.axis("off")
-        st.pyplot(fig)
-
-with tab3:
-    st.subheader("🔄 Scouting Network & Market")
-
-    active_squad_names = [p['Player'] for p in st.session_state.active_squad]
-    pool_full = df_all[~df_all['Player'].isin(active_squad_names)].copy()
-
-    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-    s_league = col_f1.selectbox("Filter League:", ["All"] + sorted(pool_full['League'].dropna().unique().tolist()))
-    pool = pool_full if s_league == "All" else pool_full[pool_full['League'] == s_league]
-
-    s_team = col_f2.selectbox("Filter Team:", ["All"] + sorted(pool['Team'].dropna().unique().tolist()))
-    if s_team != "All":
-        pool = pool[pool['Team'] == s_team]
-
-    s_position = col_f3.selectbox("Filter Position:", ["All"] + ordered_positions)
-    if s_position != "All":
-        pool = pool[pool['Position'] == s_position]
-
-    if not pool_full.empty:
-        age_lo, age_hi = int(pool_full['Age'].min()), int(pool_full['Age'].max())
-    else:
-        age_lo, age_hi = 15, 40
-    s_age_range = col_f4.slider("Filter Age:", min_value=age_lo, max_value=age_hi, value=(age_lo, age_hi))
-    pool = pool[(pool['Age'] >= s_age_range[0]) & (pool['Age'] <= s_age_range[1])]
-
-    st.markdown("---")
-    st.markdown("### 📋 Scouting Pool & Player Values")
-    st.caption(
-        "Attribute ratings reflect quality relative to each player's own league (first column). "
-        "Signing a player from a lower division discounts their ratings by 15% per league level "
-        "stepped up, applied once they join your squad."
-    )
-
-    if pool.empty:
-        st.info("No players found matching current filters.")
-    else:
-        display_df = prepare_metrics_display(
-            pool[['League', 'Position', 'Player', 'Age', 'Team'] + ABILITY_METRICS + ['Market_Value', 'Cost']]
-        ).reset_index(drop=True)
-        display_df['Market_Value'] = display_df['Market_Value'].apply(format_eur)
-        display_df['Cost'] = display_df['Cost'].apply(format_eur)
-        display_df = display_df.rename(columns={m: METRIC_ABBR[m] for m in ABILITY_METRICS})
-        display_df = display_df.rename(columns={'Market_Value': 'Market Value', 'Cost': 'Transfer Cost'})
-
-        badge_cols = {METRIC_ABBR[m]: 0 for m in ABILITY_METRICS}
-        df_to_html_table(display_df, badge_cols=badge_cols, badge_color_func=get_metric_color)
-
-        st.markdown("### 🛒 Sign Player")
-        sign_options = pool['Display_Name'].tolist()
-        selected_target = st.selectbox("Select Target Player:", [""] + sign_options)
-
-        if selected_target != "":
-            target_data = pool[pool['Display_Name'] == selected_target].iloc[0].to_dict()
-            cost = target_data['Cost']
-            mkt_val = target_data['Market_Value']
-
-            origin_level = LEAGUE_LEVELS.get(target_data.get('League'))
-            dest_level = LEAGUE_LEVELS.get(selected_league)
-            if origin_level is not None and dest_level is not None and origin_level > dest_level:
-                levels_stepped = origin_level - dest_level
-                pct_drop = (1 - 0.85 ** levels_stepped) * 100
-                st.warning(
-                    f"⚠️ This player is moving up from **{target_data.get('League')}** to **{selected_league}** "
-                    f"({levels_stepped} level(s) up). Their attribute ratings will be reduced by "
-                    f"{pct_drop:.1f}% upon signing to reflect the step up in league quality."
-                )
-
-            st.info(f"**Player Market Value:** € {mkt_val:,.0f} | **Required Transfer Fee:** € {cost:,.0f}")
-
-            if st.button("➕ Confirm Signing", type="primary"):
-                if st.session_state.budget >= cost:
-                    st.session_state.budget -= cost
-                    adjusted_player = adjust_ratings_for_league_step(target_data, selected_league)
-                    st.session_state.active_squad.append(adjusted_player)
-                    st.success(f"Successfully signed {target_data['Player']} for € {cost:,.0f}!")
-                    st.rerun()
-                else:
-                    st.error("Insufficient transfer budget to complete this acquisition!")
-
-with tab4:
-    st.subheader(f"⚽ {selected_league} - Matchday Simulation")
-
-    total_md = st.session_state.total_matchdays
-
-    col_m1, col_m2 = st.columns([1, 2])
-
-    with col_m1:
-        st.markdown("### 🗓️ Tournament Controls")
-        st.write(f"**Current Matchday:** {min(st.session_state.matchday, total_md)} / {total_md}")
-
-        season_over = st.session_state.matchday > total_md
-        if season_over:
-            st.success("🏁 Season complete!")
-        elif not st.session_state.xi_confirmed:
-            st.warning("⚠️ Please confirm your Starting XI in Tab 2 before simulating matchdays.")
-
-        play_disabled = (not st.session_state.xi_confirmed) or season_over
-
-        if st.button("▶️ Play Next Matchday", type="primary", disabled=play_disabled):
-            round_idx = st.session_state.matchday - 1
-            round_matches = st.session_state.schedule[round_idx]
-            df_stand = st.session_state.league_standings.copy()
-            t_am, t_dm = get_tactic_modifiers()
-            r_am, r_dm = get_role_modifiers()
-            attack_mod, defense_mod = t_am + r_am, t_dm + r_dm
-
-            df_stand, user_gf, user_ga, opponent, is_home = simulate_matchday_fixtures(
-                df_stand, round_matches, attack_mod, defense_mod, selected_team, st.session_state.matchday
-            )
-            st.session_state.league_standings = df_stand.sort_values(
-                by=['Pts', 'GD', 'GF'], ascending=False
-            ).reset_index(drop=True)
-
-            if user_gf is not None:
-                simulate_user_match_extras(user_gf, user_ga, st.session_state.matchday, opponent, is_home)
-
-            st.session_state.matchday += 1
-            st.success(f"Matchday {st.session_state.matchday - 1} completed!")
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@400;600;700;800&display=swap');
+
+:root {
+    --bg-dark: #0b0b16;
+    --bg-darker: #07070d;
+    --bg-card: #12121f;
+    --accent-pink: #ff2f7b;
+    --accent-pink-hover: #e0195f;
+    --accent-purple: #4a0f3d;
+    --text-light: #f5f5f7;
+    --text-muted: #9a9aab;
+    --border-soft: rgba(255,255,255,0.12);
+}
+
+html, body, [class*="css"], .stApp {
+    font-family: 'Sora', sans-serif;
+}
+
+.stApp {
+    background: var(--bg-dark);
+    color: var(--text-light);
+}
+
+/* Sidebar styling overrides */
+[data-testid="stSidebar"] {
+    background-color: var(--accent-pink) !important;
+}
+[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+[data-testid="stSidebarCollapseButton"] {
+    background-color: var(--accent-pink) !important;
+    color: #ffffff !important;
+    border-radius: 50% !important;
+    border: 2px solid rgba(255,255,255,0.5) !important;
+}
+[data-testid="stSidebarCollapseButton"]:hover {
+    background-color: var(--accent-pink-hover) !important;
+}
+
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+.block-container {
+    padding-top: 1.5rem;
+}
+
+/* Custom Dark Tables */
+table {
+    width: 100%;
+    color: var(--text-light) !important;
+    background-color: var(--bg-card) !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    border: 1px solid var(--border-soft) !important;
+    margin-bottom: 1rem !important;
+}
+th {
+    background-color: rgba(255, 47, 123, 0.15) !important;
+    color: var(--accent-pink) !important;
+    font-family: 'Space Mono', monospace !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+}
+td {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+    font-size: 0.85rem !important;
+    color: var(--text-light) !important;
+}
+tr:last-child td {
+    border-bottom: none !important;
+}
+tr:hover td {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* UI Elements */
+div[data-testid="stPopover"] button,
+div[data-testid="stPopover"] > button,
+button[data-testid="stBaseButton-secondary"],
+.stPopover > button {
+    background-color: var(--bg-card) !important;
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+div[data-testid="stPopover"] button p,
+button[data-testid="stBaseButton-secondary"] p {
+    color: var(--text-light) !important;
+    font-family: 'Space Mono', monospace !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+}
+
+div[data-testid="stPopover"] button:hover,
+button[data-testid="stBaseButton-secondary"]:hover {
+    background-color: rgba(255, 47, 123, 0.15) !important;
+    background: rgba(255, 47, 123, 0.15) !important;
+    border-color: var(--accent-pink) !important;
+}
+
+div[data-baseweb="select"] > div,
+div[data-baseweb="base-input"],
+div[data-baseweb="input"] > div {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-soft) !important;
+    color: var(--text-light) !important;
+    border-radius: 8px !important;
+}
+
+div[data-baseweb="select"] * {
+    color: var(--text-light) !important;
+}
+
+ul[role="listbox"],
+ul[data-baseweb="menu"] {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-soft) !important;
+}
+
+li[role="option"] {
+    color: var(--text-light) !important;
+    background-color: var(--bg-card) !important;
+}
+
+li[role="option"]:hover,
+li[role="option"][aria-selected="true"] {
+    background-color: rgba(255, 47, 123, 0.18) !important;
+    color: var(--accent-pink) !important;
+}
+
+.stSelectbox label,
+label[data-testid="stWidgetLabel"] p {
+    color: var(--text-light) !important;
+    font-family: 'Space Mono', monospace !important;
+    font-size: 0.85rem !important;
+}
+
+h1, h2, h3 {
+    font-family: 'Sora', sans-serif;
+    font-weight: 800;
+    color: var(--text-light);
+}
+
+.hero-title {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(115deg, #0b0b16 0%, #3a0f34 40%, #ff2f7b 120%);
+    padding: 40px 36px;
+    border-radius: 18px;
+    margin-top: 15px;
+    margin-bottom: 28px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.hero-title h1 {
+    font-family: 'Sora', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0;
+    color: #ffffff;
+}
+.hero-title .accent {
+    background: linear-gradient(90deg, #ff2f7b, #ff8fb8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.stButton > button[kind="primary"] {
+    background-color: var(--accent-pink) !important;
+    color: white !important;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    padding: 8px 16px;
+}
+.stButton > button[kind="primary"]:hover {
+    background-color: var(--accent-pink-hover) !important;
+}
+
+hr { border-color: var(--border-soft) !important; }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# ----------------------------------------------------------------------------
+# TOP NAVIGATION BAR (Player Attributes moved right after Instructions)
+# ----------------------------------------------------------------------------
+NAV_ITEMS = [
+    ("instructions", "ℹ️ Instructions"),
+    ("stats", "📈 Player Attributes"),
+    ("squad", "🧩 Squad & Tactics"),
+    ("play", "▶️ Play Matchday"),
+    ("table", "📊 League Table"),
+    ("fixtures", "📅 Fixtures & Results"),
+]
+
+if "page" not in st.session_state:
+    st.session_state.page = "instructions"
+
+nav_cols = st.columns(len(NAV_ITEMS))
+for col, (page_id, label) in zip(nav_cols, NAV_ITEMS):
+    with col:
+        if st.button(
+            label,
+            key=f"top_nav_{page_id}",
+            width="stretch",
+            type="primary" if st.session_state.page == page_id else "secondary",
+        ):
+            st.session_state.page = page_id
             st.rerun()
 
-        if st.button("⚡ Fast Forward Entire Season", disabled=play_disabled):
-            remaining = total_md - st.session_state.matchday + 1
-            if remaining > 0:
-                df_stand = st.session_state.league_standings.copy()
-                t_am, t_dm = get_tactic_modifiers()
-                r_am, r_dm = get_role_modifiers()
-                attack_mod, defense_mod = t_am + r_am, t_dm + r_dm
-                start_md = st.session_state.matchday
+# --------------------------------------------------------------------------
+# 1. Data loading
+# --------------------------------------------------------------------------
+# DATA.csv, as supplied, is not internally consistent: most rows are UTF-8
+# encoded but a handful of rows (and even individual fields within a row)
+# were saved as Latin-1/Windows-1252, so a straight `pd.read_csv` throws a
+# UnicodeDecodeError. The helpers below decode defensively line-by-line and
+# then repair any residual mojibake (e.g. "JoÃ£o" -> "João") field by field.
+# The attribute columns also arrive as "Goal.Scoring" / "Assist.Creation"
+# (dots instead of hyphens) and sit on a native ~0-19 scale rather than the
+# 0-99 scale the rest of the app assumes, so both are normalized here too.
 
-                for step in range(remaining):
-                    md_num = start_md + step
-                    round_matches = st.session_state.schedule[md_num - 1]
-                    df_stand, user_gf, user_ga, opponent, is_home = simulate_matchday_fixtures(
-                        df_stand, round_matches, attack_mod, defense_mod, selected_team, md_num
-                    )
-                    if user_gf is not None:
-                        simulate_user_match_extras(user_gf, user_ga, md_num, opponent, is_home)
+ATTR_RENAME = {
+    "Goal.Scoring": "Goal-Scoring",
+    "Assist.Creation": "Assist-Creation",
+}
+RAW_ATTR_MAX = 19  # native ceiling of the attribute columns in DATA.csv
 
-                st.session_state.league_standings = df_stand.sort_values(
-                    by=['Pts', 'GD', 'GF'], ascending=False
-                ).reset_index(drop=True)
-                st.session_state.matchday = total_md + 1
-                st.success("Season finished!")
-                st.rerun()
 
-    with col_m2:
-        st.markdown("### 🏆 League Standings Table")
-        standings_display = st.session_state.league_standings.copy()
-        df_to_html_table(standings_display, highlight_col='Team', highlight_val=selected_team)
+def _repair_mojibake(value):
+    """Undo UTF-8-bytes-read-as-Latin-1 mangling on a single string field."""
+    if not isinstance(value, str):
+        return value
+    try:
+        return value.encode("latin-1").decode("utf-8")
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return value
 
-    st.divider()
-    st.markdown("### 🗂️ League Results Matrix (Home vs Away)")
-    st.caption("Rows = home team, columns = away team. Shows the score once that fixture has been played.")
 
-    if st.session_state.all_results:
-        teams_sorted = sorted(available_teams)
-        matrix_df = pd.DataFrame("", index=teams_sorted, columns=teams_sorted)
-        for t in teams_sorted:
-            matrix_df.loc[t, t] = "—"
-        for r in st.session_state.all_results:
-            if r['home'] in matrix_df.index and r['away'] in matrix_df.columns:
-                matrix_df.loc[r['home'], r['away']] = f"{r['home_goals']}-{r['away_goals']}"
-        matrix_df = matrix_df.reset_index().rename(columns={'index': 'Home \\ Away'})
-        df_to_html_table(matrix_df, highlight_col='Home \\ Away', highlight_val=selected_team)
-    else:
-        st.info("Play a matchday to start filling in the results matrix.")
+def _robust_read_csv(path: str) -> pd.DataFrame:
+    with open(path, "rb") as f:
+        raw = f.read()
+    line_sep = b"\r\n" if b"\r\n" in raw else b"\n"
+    decoded_lines = []
+    for line in raw.split(line_sep):
+        try:
+            decoded_lines.append(line.decode("utf-8"))
+        except UnicodeDecodeError:
+            decoded_lines.append(line.decode("latin-1"))
+    df = pd.read_csv(io.StringIO("\n".join(decoded_lines)))
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = df[col].apply(_repair_mojibake)
+    return df
 
-    st.divider()
-    st.markdown("### 📰 Match Report")
 
-    match_reports = st.session_state.get('match_reports', [])
-    if match_reports:
-        available_mds = [r['Matchday'] for r in match_reports]
-        selected_md = st.selectbox("View report for matchday:", available_mds, index=len(available_mds) - 1)
-        report = next(r for r in match_reports if r['Matchday'] == selected_md)
+@st.cache_data
+def load_data() -> pd.DataFrame:
+    df = _robust_read_csv("DATA.csv")
+    df = df.rename(columns=ATTR_RENAME)
+    df["Player"] = df["Player"].astype(str).str.strip()
+    df["Team"] = df["Team"].astype(str).str.strip()
 
-        venue_tag = "Home" if report['is_home'] else "Away"
-        if report['is_home']:
-            score_line = f"{selected_team} {report['GF']} - {report['GA']} {report['opponent']}"
-        else:
-            score_line = f"{report['opponent']} {report['GA']} - {report['GF']} {selected_team}"
-
-        st.markdown(
-            f"<div class='match-score'>{score_line}</div>"
-            f"<div style='color:#7A6F52;'>Matchday {selected_md} · {venue_tag}</div>",
-            unsafe_allow_html=True
-        )
-
-        stat_cols = st.columns(3)
-        stat_cols[0].metric("Avg. Possession", f"{report['possession_for']:.0f}% - {report['possession_against']:.0f}%")
-        stat_cols[1].metric("Shots", f"{report['shots_for']} - {report['shots_against']}")
-        stat_cols[2].metric("Shots on Target", f"{report['sot_for']} - {report['sot_against']}")
-
-        if report['goal_events']:
-            lines = []
-            for g in report['goal_events']:
-                if g['assist']:
-                    lines.append(f"{g['scorer']} (assist: {g['assist']})")
-                else:
-                    lines.append(g['scorer'])
-            st.write(f"**⚽ Goals:** {', '.join(lines)}")
-        else:
-            st.write("**⚽ Goals:** No goals scored.")
-
-        if report['substitutions']:
-            subs_str = " | ".join(f"{e['out']} ➜ {e['in']}" for e in report['substitutions'])
-            st.write(f"**🔄 Substitutions:** {subs_str}")
-        else:
-            st.write("**🔄 Substitutions:** None made.")
-
-        st.markdown("**Player Ratings — This Match**")
-        ratings_df_all = pd.DataFrame(st.session_state.get('player_ratings_log', []))
-        if not ratings_df_all.empty:
-            this_match_df = ratings_df_all[ratings_df_all['Matchday'] == selected_md].sort_values('Rating', ascending=False)
-            this_match_df = this_match_df[['Player', 'Position', 'Role', 'Rating', 'Goals', 'Assists']].reset_index(drop=True)
-            df_to_html_table(this_match_df, badge_cols={'Rating': 1}, badge_color_func=get_rating_color)
-    else:
-        st.info("Play a matchday to generate a match report.")
-
-    st.markdown("### 🌟 Season Average Player Ratings")
-    ratings_log = st.session_state.get('player_ratings_log', [])
-    if ratings_log:
-        ratings_df = pd.DataFrame(ratings_log)
-        season_avg = ratings_df.groupby(['Player', 'Position']).agg(
-            **{'Avg Rating': ('Rating', 'mean'), 'Appearances': ('Rating', 'count'),
-               'Goals': ('Goals', 'sum'), 'Assists': ('Assists', 'sum')}
-        ).reset_index()
-        season_avg = season_avg.sort_values('Avg Rating', ascending=False).reset_index(drop=True)
-        df_to_html_table(season_avg, badge_cols={'Avg Rating': 2}, badge_color_func=get_rating_color)
-    else:
-        st.info("Player season averages will appear here once matchdays have been played.")
-
-with tab5:
-    st.subheader(f"📊 Player Statistics - {selected_league}")
-    st.caption(
-        "Appearances, goals and assists are tracked for your own squad's players, since they are "
-        "the only players individually simulated match-by-match in this league."
+    # A few rows share an identical Team+Player pair but carry different
+    # attributes (a data-export quirk, not the same person twice) -- give
+    # repeats a "(2)", "(3)"... suffix so every row stays individually
+    # selectable in the squad/lineup pickers.
+    dup_rank = df.groupby(["Team", "Player"]).cumcount()
+    df["Player"] = np.where(
+        dup_rank > 0, df["Player"] + " (" + (dup_rank + 1).astype(str) + ")", df["Player"]
     )
 
-    ratings_log = st.session_state.get('player_ratings_log', [])
-    if ratings_log:
-        stats_df = pd.DataFrame(ratings_log)
-        stats_agg = stats_df.groupby(['Player', 'Position']).agg(
-            **{'Appearances': ('Rating', 'count'), 'Goals': ('Goals', 'sum'),
-               'Assists': ('Assists', 'sum'), 'Avg Rating': ('Rating', 'mean')}
-        ).reset_index()
+    df["OVR"] = df.apply(_overall_rating, axis=1)
+    df["PlayerID"] = df["Team"] + " | " + df["Player"]
+    return df
 
-        sort_choice = st.selectbox("Sort by:", ["Goals", "Assists", "Appearances", "Avg Rating"])
-        stats_agg = stats_agg.sort_values(sort_choice, ascending=False).reset_index(drop=True)
+# --------------------------------------------------------------------------
+# 2. Rating model & Tactics
+# --------------------------------------------------------------------------
+POSITION_ORDER = ["GK", "CB", "FB & WB", "MF", "AM & W", "CF"]
 
-        df_to_html_table(stats_agg, badge_cols={'Avg Rating': 2}, badge_color_func=get_rating_color)
+POS_WEIGHTS = {
+    "GK":      {"Goalkeeping": 0.60, "Defense": 0.20, "Physical": 0.20},
+    "CB":      {"Defense": 0.40, "Physical": 0.25, "Possession": 0.15, "Attack": 0.10, "Dribbling": 0.10},
+    "FB & WB": {"Defense": 0.25, "Physical": 0.20, "Possession": 0.20, "Dribbling": 0.20, "Attack": 0.15},
+    "MF":      {"Possession": 0.30, "Assist-Creation": 0.20, "Defense": 0.20, "Physical": 0.15, "Attack": 0.15},
+    "AM & W":  {"Attack": 0.25, "Assist-Creation": 0.25, "Dribbling": 0.25, "Goal-Scoring": 0.15, "Possession": 0.10},
+    "CF":      {"Goal-Scoring": 0.40, "Attack": 0.25, "Dribbling": 0.15, "Physical": 0.10, "Possession": 0.10},
+}
+
+def _overall_rating(row) -> float:
+    w = POS_WEIGHTS[row.get("Position", "MF")]
+    raw = sum(row.get(k, RAW_ATTR_MAX / 2) * v for k, v in w.items())
+    # Attributes live on a ~0-19 scale in DATA.csv; rescale the weighted
+    # average up to a familiar 0-99 "OVR" so downstream match-engine math
+    # (tuned for a 0-99 scale) still behaves sensibly.
+    return round(min(99.0, raw * (99.0 / RAW_ATTR_MAX)), 1)
+
+FORMATIONS = {
+    "4-4-2":   {"GK": 1, "CB": 2, "FB & WB": 2, "MF": 2, "AM & W": 2, "CF": 2},
+    "4-3-3":   {"GK": 1, "CB": 2, "FB & WB": 2, "MF": 3, "AM & W": 2, "CF": 1},
+    "4-2-3-1": {"GK": 1, "CB": 2, "FB & WB": 2, "MF": 2, "AM & W": 3, "CF": 1},
+    "5-3-2":   {"GK": 1, "CB": 3, "FB & WB": 2, "MF": 3, "AM & W": 0, "CF": 2},
+    "5-2-2-1": {"GK": 1, "CB": 3, "FB & WB": 2, "MF": 2, "AM & W": 2, "CF": 1},
+}
+
+MENTALITIES = ["Very Defensive", "Defensive", "Balanced", "Attacking", "Very Attacking"]
+MENTALITY_MOD = {
+    "Very Defensive": (-0.20, 0.15),
+    "Defensive":       (-0.10, 0.08),
+    "Balanced":        (0.00, 0.00),
+    "Attacking":       (0.08, -0.10),
+    "Very Attacking":  (0.15, -0.20),
+} 
+
+TEMPOS = ["Slow", "Normal", "Fast"]
+TEMPO_VARIANCE = {"Slow": 0.85, "Normal": 1.0, "Fast": 1.2}
+
+OOP_LINES = ["High line", "Medium-block", "Low defensive line"]
+PRESS_TYPES = ["High Press", "Balanced", "Low Press"]
+
+SCORER_SLOT_BIAS = {"CF": 3.0, "AM & W": 2.0, "MF": 1.0, "FB & WB": 0.35, "CB": 0.15, "GK": 0.02}
+
+def slot_labels(formation: str):
+    labels = []
+    for pos in POSITION_ORDER:
+        n = FORMATIONS[formation].get(pos, 0)
+        for i in range(1, n + 1):
+            labels.append((pos, f"{pos} #{i}" if n > 1 else pos))
+    return labels
+
+def auto_select_xi(squad: pd.DataFrame, formation: str) -> pd.DataFrame:
+    reqs = FORMATIONS[formation]
+    remaining = squad.copy()
+    picks = []
+    
+    for pos, n in reqs.items():
+        if n == 0: continue
+        pool = remaining[remaining["Position"] == pos].sort_values("OVR", ascending=False)
+        chosen = pool.head(n)
+        for i, (_, r) in enumerate(chosen.iterrows()):
+            label = f"{pos} #{i+1}" if n > 1 else pos
+            picks.append({"Slot": pos, "Label": label, "Player": r["Player"], "Position": r["Position"], "OVR": r["OVR"], "OOP": False})
+        remaining = remaining.drop(chosen.index)
+
+    filled = {pos: sum(1 for p in picks if p["Slot"] == pos) for pos in reqs}
+    for pos, n in reqs.items():
+        short = n - filled.get(pos, 0)
+        if short > 0 and len(remaining):
+            pool = remaining.sort_values("OVR", ascending=False).head(short)
+            for i, (_, r) in enumerate(pool.iterrows()):
+                idx = filled.get(pos, 0) + i + 1
+                label = f"{pos} #{idx}" if n > 1 else pos
+                picks.append({"Slot": pos, "Label": label, "Player": r["Player"], "Position": r["Position"], "OVR": round(r["OVR"] * 0.85, 1), "OOP": True})
+            remaining = remaining.drop(pool.index)
+            
+    return pd.DataFrame(picks)
+
+def lineup_from_manual(squad: pd.DataFrame, assignments: dict) -> pd.DataFrame:
+    rows = []
+    for (pos, label), player in assignments.items():
+        if player is None: continue
+        r = squad[squad["Player"] == player].iloc[0]
+        rows.append({"Slot": pos, "Label": label, "Player": player, "Position": r["Position"], "OVR": r["OVR"], "OOP": r["Position"] != pos})
+    return pd.DataFrame(rows)
+
+# --------------------------------------------------------------------------
+# 3. Match engine
+# --------------------------------------------------------------------------
+def phase_ratings(xi: pd.DataFrame, mentality: str = "Balanced") -> dict:
+    def bucket(weights, phase):
+        num, den = 0.0, 0.0
+        for slot, w in weights.items():
+            sub = xi[xi["Slot"] == slot]
+            for _, r in sub.iterrows():
+                role = r.get("Role", "Balanced")
+                adj_w = w
+                
+                if role == "Attack":
+                    if phase == "att": adj_w *= 1.35
+                    elif phase == "def": adj_w *= 0.65
+                elif role == "Defensive":
+                    if phase == "def": adj_w *= 1.35
+                    elif phase == "att": adj_w *= 0.65
+                    
+                num += r["OVR"] * adj_w
+                den += adj_w
+        return num / den if den else 45.0
+
+    d = bucket({"GK": 0.35, "CB": 1.0, "FB & WB": 0.6, "MF": 0.15}, "def")
+    m = bucket({"MF": 1.0, "AM & W": 0.4, "FB & WB": 0.25, "CB": 0.1, "CF": 0.1}, "mid")
+    a = bucket({"CF": 1.0, "AM & W": 0.9, "MF": 0.25, "FB & WB": 0.1}, "att")
+    
+    att_mod, def_mod = MENTALITY_MOD[mentality]
+    return {"def": d * (1 + def_mod), "mid": m, "att": a * (1 + att_mod)}
+
+def get_match_rating(base_xg, goals, is_cs, rng, is_scorer):
+    rating = 6.0 + rng.normal(0, 0.5) + (base_xg * 0.2)
+    if is_scorer:
+        rating += 1.5
+    if is_cs:
+        rating += 0.8
+    return round(min(10.0, max(3.0, rating)), 1)
+
+def simulate_match(home_xi, away_xi, 
+                   home_mentality="Balanced", away_mentality="Balanced",
+                   home_tempo="Normal", away_tempo="Normal",
+                   home_line="Medium-block", away_line="Medium-block",
+                   home_press="Balanced", away_press="Balanced",
+                   home_adv=0.28, rng=None):
+    rng = rng or np.random.default_rng()
+    h = phase_ratings(home_xi, home_mentality)
+    a = phase_ratings(away_xi, away_mentality)
+    
+    line_att_mod = {"High line": 0.05, "Medium-block": 0.0, "Low defensive line": -0.05}
+    line_def_mod = {"High line": -0.05, "Medium-block": 0.0, "Low defensive line": 0.05}
+    h["att"] *= (1 + line_att_mod[home_line])
+    h["def"] *= (1 + line_def_mod[home_line])
+    a["att"] *= (1 + line_att_mod[away_line])
+    a["def"] *= (1 + line_def_mod[away_line])
+
+    xg_home = np.clip((1.05 + (h["att"] - a["def"]) / 26 + (h["mid"] - a["mid"]) / 60 + home_adv) * TEMPO_VARIANCE[home_tempo], 0.10, 4.2)
+    xg_away = np.clip((1.05 + (a["att"] - h["def"]) / 26 + (a["mid"] - h["mid"]) / 60) * TEMPO_VARIANCE[away_tempo], 0.10, 4.2)
+    
+    hg = int(rng.poisson(xg_home))
+    ag = int(rng.poisson(xg_away))
+    
+    press_mod = {"High Press": 0.06, "Balanced": 0.0, "Low Press": -0.04}
+    base_possession_home = 50 + np.clip((h["mid"] - a["mid"]) * 0.9, -22, 22)
+    press_poss_shift = (press_mod[home_press] - press_mod[away_press]) * 50
+    possession_home = np.clip(base_possession_home + press_poss_shift, 20, 80)
+    
+    return {
+        "home_goals": hg, "away_goals": ag,
+        "xg_home": round(xg_home, 2), "xg_away": round(xg_away, 2),
+        "possession_home": round(possession_home, 1),
+    }
+
+def pick_scorers(xi: pd.DataFrame, n_goals: int, rng=None):
+    if n_goals <= 0 or xi.empty: return []
+    rng = rng or np.random.default_rng()
+    pool = xi.copy()
+    pool["w"] = pool["Slot"].map(SCORER_SLOT_BIAS).fillna(0.5) * (pool["OVR"] / 50.0)
+    pool["w"] = pool["w"].clip(lower=0.01)
+    weights = (pool["w"] / pool["w"].sum()).to_numpy()
+    return list(rng.choice(pool["Player"].to_numpy(), size=n_goals, p=weights))
+
+# --------------------------------------------------------------------------
+# 4. Season / schedule
+# --------------------------------------------------------------------------
+def round_robin_schedule(teams: list) -> list:
+    teams = teams[:]
+    if len(teams) % 2: teams.append(None)
+    n = len(teams)
+    rounds = []
+    for r in range(n - 1):
+        pairs = []
+        for i in range(n // 2):
+            t1, t2 = teams[i], teams[n - 1 - i]
+            if t1 is not None and t2 is not None:
+                pairs.append((t1, t2) if r % 2 == 0 else (t2, t1))
+        rounds.append(pairs)
+        teams.insert(1, teams.pop())
+    second_leg = [[(b, a) for (a, b) in rnd] for rnd in rounds]
+    return rounds + second_leg
+
+def empty_table_row():
+    return {"P": 0, "W": 0, "D": 0, "L": 0, "GF": 0, "GA": 0, "GD": 0, "Pts": 0}
+
+def update_table(table: dict, home: str, away: str, hg: int, ag: int):
+    for t in (home, away): table[t]["P"] += 1
+    table[home]["GF"] += hg; table[home]["GA"] += ag
+    table[away]["GF"] += ag; table[away]["GA"] += hg
+    if hg > ag:
+        table[home]["W"] += 1; table[home]["Pts"] += 3; table[away]["L"] += 1
+    elif hg < ag:
+        table[away]["W"] += 1; table[away]["Pts"] += 3; table[home]["L"] += 1
     else:
-        st.info("Play a matchday in the Matchday Simulation tab to start generating player statistics.")
+        table[home]["D"] += 1; table[away]["D"] += 1
+        table[home]["Pts"] += 1; table[away]["Pts"] += 1
+    table[home]["GD"] = table[home]["GF"] - table[home]["GA"]
+    table[away]["GD"] = table[away]["GF"] - table[away]["GA"]
 
-with tab6:
-    st.subheader(f"💼 Transfer Market - {selected_league}")
+def table_dataframe(table: dict) -> pd.DataFrame:
+    df = pd.DataFrame(table).T
+    df.index.name = "Team"
+    df = df.reset_index()
+    df = df.sort_values(["Pts", "GD", "GF"], ascending=False).reset_index(drop=True)
+    df.index = df.index + 1
+    df.index.name = "Pos"
+    return df[["Team", "P", "W", "D", "L", "GF", "GA", "GD", "Pts"]]
 
-    market_open = (not st.session_state.xi_confirmed) and (st.session_state.matchday == 1)
+# --------------------------------------------------------------------------
+# 5. Streamlit app session
+# --------------------------------------------------------------------------
 
-    if not market_open:
-        st.info(
-            "🔒 The transfer market is closed. It's only available before you confirm your Starting XI "
-            "and before the first matchday is played."
-        )
+DF = load_data()
+ALL_TEAMS = sorted(DF["Team"].unique().tolist())
+
+def init_session():
+    ss = st.session_state
+    ss.setdefault("season_started", False)
+    ss.setdefault("user_team", None)
+    ss.setdefault("formation", "4-3-3")
+    ss.setdefault("mentality", "Balanced")
+    ss.setdefault("tempo", "Normal")
+    ss.setdefault("oop_line", "Medium-block")
+    ss.setdefault("pressing", "Balanced")
+    ss.setdefault("manual_lineup", {})   
+    ss.setdefault("player_roles", {})    
+    ss.setdefault("schedule", [])
+    ss.setdefault("matchday", 0)         
+    ss.setdefault("table", {})
+    ss.setdefault("scorers", {})
+    ss.setdefault("history", [])         
+    ss.setdefault("last_commentary", None)
+    ss.setdefault("player_ratings_sum", {})
+    ss.setdefault("player_ratings_count", {})
+    ss.setdefault("recent_match_ratings", {})
+
+init_session()
+ss = st.session_state
+
+def start_new_season(team: str):
+    ss.user_team = team
+    ss.season_started = True
+    ss.formation = "4-3-3"
+    ss.mentality = "Balanced"
+    ss.tempo = "Normal"
+    ss.oop_line = "Medium-block"
+    ss.pressing = "Balanced"
+    ss.manual_lineup = {}
+    ss.player_roles = {}
+    teams = ALL_TEAMS[:]
+    random.shuffle(teams)
+    ss.schedule = round_robin_schedule(teams)
+    ss.matchday = 0
+    ss.table = {t: empty_table_row() for t in ALL_TEAMS}
+    ss.scorers = {}
+    ss.history = []
+    ss.last_commentary = None
+    ss.player_ratings_sum = {}
+    ss.player_ratings_count = {}
+    ss.recent_match_ratings = {}
+
+def reset_all():
+    keep_page = ss.get("page", "instructions")
+    for key in list(ss.keys()): del ss[key]
+    init_session()
+    ss.page = keep_page
+
+def get_user_squad():
+    return DF[DF["Team"] == ss.user_team].copy()
+
+def current_user_xi():
+    squad = get_user_squad()
+    if ss.manual_lineup:
+        xi = lineup_from_manual(squad, ss.manual_lineup)
+        if len(xi) != 11: xi = auto_select_xi(squad, ss.formation)
     else:
-        st.caption(
-            "A simulated summer transfer window across the rest of the league (your own club's transfers "
-            "are handled separately, in Scouting & Transfers)."
-        )
-        transfers = st.session_state.get('league_transfers', [])
-        if transfers:
-            transfers_df = pd.DataFrame(transfers)[['Player', 'Position', 'From Team', 'From League', 'To Team', 'Fee']].copy()
-            transfers_df['Fee'] = transfers_df['Fee'].apply(format_eur)
-            df_to_html_table(transfers_df)
+        xi = auto_select_xi(squad, ss.formation)
+        
+    def apply_role(row):
+        if row["Slot"] == "GK": return "GK"
+        if row["Slot"] == "CB": return ss.player_roles.get((row["Slot"], row["Label"]), "Defensive")
+        default_role = "Attack" if row["Slot"] in ["CF", "AM & W"] else "Balanced" if row["Slot"] == "MF" else "Defensive"
+        return ss.player_roles.get((row["Slot"], row["Label"]), default_role)
+        
+    xi["Role"] = xi.apply(apply_role, axis=1)
+    return xi
+
+def ai_lineup_for(team: str):
+    squad = DF[DF["Team"] == team]
+    formation = random.choice(["4-3-3", "4-4-2", "4-2-3-1", "5-2-2-1"])
+    mentality = random.choice(["Defensive", "Balanced", "Balanced", "Attacking"])
+    tempo = random.choice(TEMPOS)
+    line = random.choice(OOP_LINES)
+    press = random.choice(PRESS_TYPES)
+    xi = auto_select_xi(squad, formation)
+    
+    def default_role(slot):
+        if slot in ["CF", "AM & W"]: return "Attack"
+        if slot == "MF": return "Balanced"
+        if slot in ["CB", "FB & WB"]: return "Defensive"
+        return "GK"
+        
+    xi["Role"] = xi["Slot"].apply(default_role)
+    return xi, mentality, tempo, line, press
+
+def play_fixture(home, away, rng):
+    if home == ss.user_team:
+        home_xi, home_ment, home_tempo, home_line, home_press = current_user_xi(), ss.mentality, ss.tempo, ss.oop_line, ss.pressing
+    else:
+        home_xi, home_ment, home_tempo, home_line, home_press = ai_lineup_for(home)
+        
+    if away == ss.user_team:
+        away_xi, away_ment, away_tempo, away_line, away_press = current_user_xi(), ss.mentality, ss.tempo, ss.oop_line, ss.pressing
+    else:
+        away_xi, away_ment, away_tempo, away_line, away_press = ai_lineup_for(away)
+
+    result = simulate_match(home_xi, away_xi, home_ment, away_ment, home_tempo, away_tempo, home_line, away_line, home_press, away_press, rng=rng)
+    home_scorers = pick_scorers(home_xi, result["home_goals"], rng)
+    away_scorers = pick_scorers(away_xi, result["away_goals"], rng)
+    for s in home_scorers + away_scorers:
+        ss.scorers[s] = ss.scorers.get(s, 0) + 1
+    update_table(ss.table, home, away, result["home_goals"], result["away_goals"])
+    
+    home_cs = result["away_goals"] == 0
+    away_cs = result["home_goals"] == 0
+    
+    h_ratings = {}
+    for _, p in home_xi.iterrows():
+        r = get_match_rating(result["xg_home"], result["home_goals"], home_cs, rng, p["Player"] in home_scorers)
+        h_ratings[p["Player"]] = r
+        ss.player_ratings_sum[p["Player"]] = ss.player_ratings_sum.get(p["Player"], 0) + r
+        ss.player_ratings_count[p["Player"]] = ss.player_ratings_count.get(p["Player"], 0) + 1
+        
+    a_ratings = {}
+    for _, p in away_xi.iterrows():
+        r = get_match_rating(result["xg_away"], result["away_goals"], away_cs, rng, p["Player"] in away_scorers)
+        a_ratings[p["Player"]] = r
+        ss.player_ratings_sum[p["Player"]] = ss.player_ratings_sum.get(p["Player"], 0) + r
+        ss.player_ratings_count[p["Player"]] = ss.player_ratings_count.get(p["Player"], 0) + 1
+        
+    if home == ss.user_team:
+        ss.recent_match_ratings = h_ratings
+    elif away == ss.user_team:
+        ss.recent_match_ratings = a_ratings
+
+    ss.history.append({
+        "round": ss.matchday + 1, "home": home, "away": away,
+        "hg": result["home_goals"], "ag": result["away_goals"],
+        "is_user": ss.user_team in (home, away),
+        "home_scorers": home_scorers, "away_scorers": away_scorers,
+    })
+    return result, home_scorers, away_scorers
+
+def play_next_matchday():
+    if ss.matchday >= len(ss.schedule): return None
+    rng = np.random.default_rng()
+    round_fixtures = ss.schedule[ss.matchday]
+    user_result = None
+    for home, away in round_fixtures:
+        result, hs, as_ = play_fixture(home, away, rng)
+        if ss.user_team in (home, away):
+            user_result = (home, away, result, hs, as_)
+            
+    if user_result:
+        home, away, result, hs, as_ = user_result
+        lines = [f"Full time at {home}'s ground: {home} {result['home_goals']}-{result['away_goals']} {away}."]
+        lines.append(f"Expected Goals: {result['xg_home']} - {result['xg_away']} | Possession: {result['possession_home']}% - {100-result['possession_home']}%")
+        events = [("home", s) for s in hs] + [("away", s) for s in as_]
+        rng.shuffle(events)
+        for side, scorer in events:
+            lines.append(f"⚽ GOAL! {scorer} ({home if side == 'home' else away})")
+        ss.last_commentary = lines
+    else:
+        ss.last_commentary = None
+    ss.matchday += 1
+
+def simulate_to_end():
+    while ss.matchday < len(ss.schedule):
+        play_next_matchday()
+
+# --------------------------------------------------------------------------
+# Sidebar
+# --------------------------------------------------------------------------
+with st.sidebar:
+    st.title("⚽ Liga Portugal Manager")
+    st.caption("Liga Portugal 2026/27")
+
+    if ss.season_started:
+        st.metric("Managing", ss.user_team)
+        st.metric("Matchday", f"{min(ss.matchday + 1, len(ss.schedule))} / {len(ss.schedule)}")
+        st.divider()
+        if st.button("🔄 Restart Game", width="stretch"):
+            reset_all()
+            st.rerun()
+
+# --------------------------------------------------------------------------
+# Main area View Renders
+# --------------------------------------------------------------------------
+
+def style_player_attributes(df: pd.DataFrame):
+    """Applies color coding and formatting to player attribute columns.
+
+    DATA.csv's attribute columns run roughly 0-19 (an FM-style 1-20
+    rating), not 0-99, so the color bands and number formatting below are
+    tuned to that native scale rather than the original 0-99 assumption.
+    """
+    exclude_cols = ["OVR", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "round", "Season"]
+    num_cols = [c for c in df.select_dtypes(include=np.number).columns if c not in exclude_cols]
+    
+    if not num_cols:
+        return df
+
+    def color_scale(val):
+        if not isinstance(val, (int, float)) or pd.isna(val):
+            return ''
+        if val <= 3:
+            return 'background-color: rgba(255, 75, 75, 0.4);'   # Red (0-3)
+        elif val <= 7:
+            return 'background-color: rgba(255, 150, 50, 0.4);'  # Orange (4-7)
+        elif val <= 11:
+            return 'background-color: rgba(220, 220, 50, 0.3);'  # Yellow (8-11)
+        elif val <= 15:
+            return 'background-color: rgba(100, 220, 100, 0.3);' # Light Green (12-15)
         else:
-            st.info("No transfers were generated for this league.")
+            return 'background-color: rgba(50, 180, 50, 0.5);'   # Green (16-19)
+            
+    styler = df.style
+    if hasattr(styler, "map"):
+        styler = styler.map(color_scale, subset=num_cols)
+    else:
+        styler = styler.applymap(color_scale, subset=num_cols)
+        
+    return styler.format("{:.0f}", subset=num_cols)
+
+
+def render_instructions():
+    st.markdown(
+        """
+<div class="hero-title">
+<h1>⚽ Welcome to <span class="accent">Liga Portugal Manager</span></h1>
+<p>A Football-Manager-style game built on real Liga Portugal squads.
+No transfer market — you manage exactly the players your club already has.</p>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+    if not ss.season_started:
+        st.subheader("🏁 Start Your Career")
+        st.markdown("Select a club below to begin managing.")
+        
+        teams = ALL_TEAMS[:]
+        for i in range(0, len(teams), 3):
+            cols = st.columns(3)
+            for j in range(3):
+                if i + j < len(teams):
+                    t = teams[i+j]
+                    if cols[j].button(t, width="stretch", key=f"btn_start_{t}"):
+                        start_new_season(t)
+                        ss.page = "squad"
+                        st.rerun()
+
+def render_need_season_prompt():
+    st.info("👋 Go to **ℹ️ Instructions** to pick a club and start the season.")
+
+def generate_pitch_html(xi_df: pd.DataFrame, avg_ratings: dict) -> str:
+    lines = {"Attack": [], "AM": [], "Mid": [], "Def": [], "GK": []}
+    for _, row in xi_df.iterrows():
+        slot = row["Slot"]
+        if slot == "CF": lines["Attack"].append(row)
+        elif slot == "AM & W": lines["AM"].append(row)
+        elif slot == "MF": lines["Mid"].append(row)
+        elif slot in ["CB", "FB & WB"]: lines["Def"].append(row)
+        elif slot == "GK": lines["GK"].append(row)
+            
+    fbs = [p for p in lines["Def"] if p["Slot"] == "FB & WB"]
+    cbs = [p for p in lines["Def"] if p["Slot"] == "CB"]
+    if len(fbs) >= 2: lines["Def"] = [fbs[0]] + cbs + fbs[1:]
+    elif len(fbs) == 1: lines["Def"] = [fbs[0]] + cbs
+    else: lines["Def"] = cbs
+
+    html = """
+<style>
+.pitch-container {
+    background: #1c4924;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    width: 100%;
+    height: 700px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    padding: 10px 0;
+    position: relative;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 10%, rgba(0,0,0,0.08) 10%, rgba(0,0,0,0.08) 20%);
+    overflow: hidden;
+}
+.pitch-halfway { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.25); transform: translateY(-50%); z-index: 1; }
+.pitch-center-circle { position: absolute; top: 50%; left: 50%; width: 110px; height: 110px; border: 2px solid rgba(255,255,255,0.25); border-radius: 50%; transform: translate(-50%, -50%); z-index: 1; }
+.pitch-box-top { position: absolute; top: 0; left: 20%; width: 60%; height: 15%; border: 2px solid rgba(255,255,255,0.25); border-top: none; z-index: 1; }
+.pitch-box-bottom { position: absolute; bottom: 0; left: 20%; width: 60%; height: 15%; border: 2px solid rgba(255,255,255,0.25); border-bottom: none; z-index: 1; }
+.pitch-goal-top { position: absolute; top: 0; left: 38%; width: 24%; height: 5%; border: 2px solid rgba(255,255,255,0.25); border-top: none; background: rgba(255,255,255,0.05); z-index: 1; }
+.pitch-goal-bottom { position: absolute; bottom: 0; left: 38%; width: 24%; height: 5%; border: 2px solid rgba(255,255,255,0.25); border-bottom: none; background: rgba(255,255,255,0.05); z-index: 1; }
+
+.pitch-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    min-height: 80px;
+    z-index: 2;
+}
+.pitch-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 5;
+}
+.pitch-pos {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 4px;
+    font-family: 'Space Mono', monospace;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+}
+.pitch-dot {
+    background-color: var(--bg-card);
+    border: 3px solid var(--accent-pink);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    position: relative;
+}
+.pitch-rating-badge {
+    background-color: #ffd700;
+    color: #000;
+    font-size: 0.6rem;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 6px;
+    position: absolute;
+    top: -8px;
+    right: -25px;
+    border: 1px solid rgba(0,0,0,0.4);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.pitch-name {
+    background-color: rgba(0,0,0,0.75);
+    color: #f5f5f7;
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+    text-align: center;
+    white-space: nowrap;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.pitch-role {
+    font-size: 0.5rem;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.role-attack { background-color: var(--accent-pink); color: white; }
+.role-balanced { background-color: #3b82f6; color: white; }
+.role-defensive { background-color: #4b5563; color: white; }
+</style>
+<div class="pitch-container">
+    <div class="pitch-halfway"></div>
+    <div class="pitch-center-circle"></div>
+    <div class="pitch-box-top"></div>
+    <div class="pitch-box-bottom"></div>
+    <div class="pitch-goal-top"></div>
+    <div class="pitch-goal-bottom"></div>
+"""
+    for line_key in ["Attack", "AM", "Mid", "Def", "GK"]:
+        players = lines[line_key]
+        if not players: continue
+        
+        html += '<div class="pitch-row">\n'
+        for p in players:
+            name_parts = p["Player"].split()
+            short_name = name_parts[-1] if len(name_parts) > 1 else p["Player"]
+            
+            avg = avg_ratings.get(p["Player"])
+            badge_html = f'<div class="pitch-rating-badge">{avg:.1f}</div>' if avg else ''
+            
+            if p["Slot"] == "GK":
+                html += f'<div class="pitch-node"><div class="pitch-pos">{p["Slot"]}</div><div class="pitch-dot">{badge_html}</div><div class="pitch-name">{short_name}</div></div>\n'
+            else:
+                role = p.get("Role", "Balanced")
+                role_class = "role-attack" if role == "Attack" else "role-balanced" if role == "Balanced" else "role-defensive"
+                html += f'<div class="pitch-node"><div class="pitch-pos">{p["Slot"]}</div><div class="pitch-dot">{badge_html}</div><div class="pitch-name">{short_name}</div><div class="pitch-role {role_class}">{role}</div></div>\n'
+        html += '</div>\n'
+    html += '</div>'
+    return html
+
+def render_squad_tactics():
+    if not ss.season_started:
+        render_need_season_prompt()
+        return
+
+    st.subheader(f"{ss.user_team} — Squad & Tactics")
+    col_tac, col_pitch, col_sel = st.columns([1.2, 2.5, 2.0], gap="medium")
+    squad = get_user_squad()
+
+    with col_tac:
+        st.markdown("##### 📋 Tactical Style")
+        new_formation = st.selectbox("Formation", list(FORMATIONS.keys()), index=list(FORMATIONS.keys()).index(ss.formation))
+        if new_formation != ss.formation:
+            ss.formation = new_formation
+            ss.manual_lineup = {}
+            ss.player_roles = {}
+            st.rerun()
+
+        ss.mentality = st.selectbox("Mentality", MENTALITIES, index=MENTALITIES.index(ss.mentality))
+        ss.tempo = st.selectbox("Tempo", TEMPOS, index=TEMPOS.index(ss.tempo))
+        ss.oop_line = st.selectbox("Defensive Line", OOP_LINES, index=OOP_LINES.index(ss.oop_line))
+        ss.pressing = st.selectbox("Pressing Type", PRESS_TYPES, index=PRESS_TYPES.index(ss.pressing))
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("⚡ Auto-Pick XI", width="stretch"):
+            ss.manual_lineup = {}
+            ss.player_roles = {}
+            st.rerun()
+
+    labels = slot_labels(ss.formation)
+    auto_xi = auto_select_xi(squad, ss.formation)
+    current_xi_df = current_user_xi()
+
+    with col_sel:
+        st.markdown("##### 👕 Starting XI & Roles")
+        changed = False
+        used_players = set()
+        
+        for i, (pos, label) in enumerate(labels):
+            auto_row = auto_xi[auto_xi["Slot"] == pos].reset_index(drop=True)
+            same_pos_labels = [l for p, l in labels if p == pos]
+            idx_within_pos = same_pos_labels.index(label)
+            default_player = auto_row.iloc[idx_within_pos]["Player"] if idx_within_pos < len(auto_row) else None
+            
+            current = ss.manual_lineup.get((pos, label), default_player)
+            pos_squad = squad[squad["Position"] == pos]["Player"].tolist()
+            if current and current not in pos_squad:
+                pos_squad.append(current)
+                
+            avail = [p for p in pos_squad if p not in used_players or p == current]
+            if not avail: avail = squad["Player"].tolist()
+            idx = avail.index(current) if current in avail else 0
+            
+            col_p, col_r = st.columns([6, 4])
+            with col_p:
+                selected = st.selectbox(label, avail, index=idx, key=f"slot_{pos}_{label}")
+                used_players.add(selected)
+                if ss.manual_lineup.get((pos, label)) != selected:
+                    ss.manual_lineup[(pos, label)] = selected
+                    changed = True
+
+            with col_r:
+                if pos == "GK":
+                    st.selectbox("Role", ["GK"], disabled=True, key=f"role_{pos}_{label}")
+                elif pos == "CB":
+                    current_role = ss.player_roles.get((pos, label), "Defensive")
+                    if current_role not in ["Balanced", "Defensive"]: current_role = "Defensive"
+                    role = st.selectbox("Role", ["Balanced", "Defensive"], index=["Balanced", "Defensive"].index(current_role), key=f"role_{pos}_{label}")
+                    if ss.player_roles.get((pos, label)) != role:
+                        ss.player_roles[(pos, label)] = role
+                        changed = True
+                else:
+                    default_role = "Attack" if pos in ["CF", "AM & W"] else "Balanced" if pos == "MF" else "Defensive"
+                    current_role = ss.player_roles.get((pos, label), default_role)
+                    role = st.selectbox("Role", ["Attack", "Balanced", "Defensive"], index=["Attack", "Balanced", "Defensive"].index(current_role), key=f"role_{pos}_{label}")
+                    if ss.player_roles.get((pos, label)) != role:
+                        ss.player_roles[(pos, label)] = role
+                        changed = True
+
+        if changed:
+            st.rerun()
+
+    with col_pitch:
+        st.markdown(f"##### 🏟️ {ss.formation} Shape")
+        avg_ratings = {k: ss.player_ratings_sum[k]/ss.player_ratings_count[k] for k in ss.player_ratings_sum}
+        st.markdown(generate_pitch_html(current_xi_df, avg_ratings), unsafe_allow_html=True)
+        
+    st.divider()
+    st.markdown("##### 👥 Full Squad Attributes")
+    
+    # Filtering controls for squad table
+    filtered_squad = squad.copy()
+    squad_positions = st.multiselect("Filter by Position", POSITION_ORDER, key="squad_pos_filter")
+    if squad_positions:
+        filtered_squad = filtered_squad[filtered_squad["Position"].isin(squad_positions)]
+
+    squad_display = filtered_squad.drop(
+        columns=["PlayerID", "Team", "OVR", "Season", "League", "season", "league"], 
+        errors="ignore"
+    )
+    st.dataframe(style_player_attributes(squad_display), width="stretch", hide_index=True)
+
+def render_play():
+    if not ss.season_started:
+        render_need_season_prompt()
+        return
+    
+    st.subheader("▶️ Play Matchday")
+    if ss.matchday >= len(ss.schedule):
+        st.success("The season is over! Check the final league table.")
+        return
+
+    st.markdown(f"**Matchday {ss.matchday + 1} of {len(ss.schedule)}**")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Play Next Matchday", type="primary", width="stretch"):
+            play_next_matchday()
+            st.rerun()
+    with col2:
+        if st.button("⏩ Simulate Rest of Season", width="stretch"):
+            simulate_to_end()
+            st.rerun()
+
+    if ss.last_commentary:
+        st.divider()
+        st.markdown("### 🎙️ Latest Match Report")
+        for line in ss.last_commentary: st.markdown(f"> {line}")
+            
+    st.divider()
+    st.markdown("### Recent Results")
+    recent = [h for h in ss.history if h["round"] == ss.matchday]
+    if recent:
+        for r in recent:
+            bold_user = lambda t: f"**{t}**" if t == ss.user_team else t
+            st.markdown(f"{bold_user(r['home'])} {r['hg']} - {r['ag']} {bold_user(r['away'])}")
+            
+    if ss.recent_match_ratings:
+        st.markdown("#### 📊 Your Match Ratings")
+        cols = st.columns(4)
+        for i, (player, rating) in enumerate(sorted(ss.recent_match_ratings.items(), key=lambda x: -x[1])):
+            color = "green" if rating >= 7.5 else "orange" if rating >= 6.0 else "red"
+            cols[i%4].markdown(f"**{player}**: <span style='color:{color}'>{rating:.1f}</span>", unsafe_allow_html=True)
+
+def render_table():
+    if not ss.season_started:
+        render_need_season_prompt()
+        return
+    st.subheader("📊 League Table")
+    st.dataframe(table_dataframe(ss.table), width="stretch")
+    
+    st.divider()
+    st.subheader("🥇 Top Scorers")
+    if not ss.scorers:
+        st.info("No goals scored yet.")
+    else:
+        scorers_df = (
+            pd.Series(ss.scorers)
+            .sort_values(ascending=False)
+            .head(15)
+            .rename_axis("Player")
+            .reset_index(name="Goals")
+        )
+        st.dataframe(scorers_df, width="stretch", hide_index=True)
+
+def render_fixtures():
+    if not ss.season_started:
+        render_need_season_prompt()
+        return
+    st.subheader("📅 Fixtures & Results")
+    if not ss.history:
+        st.info("No matches played yet.")
+    else:
+        history_df = pd.DataFrame(ss.history)
+        user_history = history_df[history_df["is_user"]].copy()
+        user_history["Result"] = user_history["home"] + " " + user_history["hg"].astype(str) + " - " + user_history["ag"].astype(str) + " " + user_history["away"]
+        st.dataframe(
+            user_history[["round", "Result"]].rename(columns={"round": "Round"}),
+            width="stretch",
+            hide_index=True,
+        )
+        
+    st.divider()
+    st.subheader("🔀 Results Matrix")
+    
+    teams = sorted(ALL_TEAMS)
+    matrix = pd.DataFrame(index=teams, columns=teams).fillna("-")
+    for h in ss.history:
+        matrix.at[h["home"], h["away"]] = f"{h['hg']}-{h['ag']}"
+    
+    st.dataframe(matrix.rename_axis("Home \\ Away").reset_index(), width="stretch", hide_index=True)
+
+def render_player_stats():
+    st.subheader("📈 Player Attributes & Scouting")
+    df = DF.copy()
+    
+    search = st.text_input("🔍 Search Player by Name")
+    if search:
+        df = df[df["Player"].str.contains(search, case=False, na=False)]
+        
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        teams = st.multiselect("Filter by Team", ALL_TEAMS)
+        if teams: df = df[df["Team"].isin(teams)]
+    with col2:
+        positions = st.multiselect("Filter by Position", POSITION_ORDER)
+        if positions: df = df[df["Position"].isin(positions)]
+    with col3:
+        num_cols = df.select_dtypes(include=np.number).columns.tolist()
+        num_cols = [c for c in num_cols if c not in ["PlayerID", "OVR"]]
+        if num_cols:
+            attr = st.selectbox("Attribute Filter", ["None"] + sorted(num_cols))
+            if attr != "None":
+                min_val = float(df[attr].min())
+                max_val = float(df[attr].max())
+                min_filter = st.number_input(f"Min {attr}", min_value=min_val, max_value=max_val, value=min_val)
+                df = df[df[attr] >= min_filter]
+                
+    df_display = df.drop(
+        columns=["PlayerID", "OVR", "Season", "League", "season", "league"], 
+        errors="ignore"
+    )
+    st.dataframe(style_player_attributes(df_display), width="stretch", hide_index=True)
+
+# --------------------------------------------------------------------------
+# Main Page Router
+# --------------------------------------------------------------------------
+if ss.page == "instructions": render_instructions()
+elif ss.page == "stats": render_player_stats()
+elif ss.page == "squad": render_squad_tactics()
+elif ss.page == "play": render_play()
+elif ss.page == "table": render_table()
+elif ss.page == "fixtures": render_fixtures()
