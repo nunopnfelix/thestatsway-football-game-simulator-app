@@ -8,3 +8,6 @@ matplotlib
 seaborn
 scikit-learn
 lightgbm 
+base64
+io
+random
