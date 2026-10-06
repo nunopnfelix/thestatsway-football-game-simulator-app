@@ -696,7 +696,7 @@ PLAY_TYPE_PROFILE = {
 
 def _play_type_raw(play_type: str, xi: pd.DataFrame, attrs: pd.DataFrame):
     """Average attribute quality (raw 1-19 scale) of the XI for what this style asks of its players."""
-    comps = PLAY_TYPE_PROFILE.get(play_type)
+    comps = ALL_PROFILES.get(play_type)
     if not comps:
         return None
     players, slots = xi["Player"].tolist(), xi["Slot"].tolist()
@@ -724,7 +724,7 @@ def _cached_play_type_raw(team: str, assignment: tuple, play_type: str):
 @st.cache_data
 def compute_play_type_baseline(_df: pd.DataFrame) -> dict:
     """Mean / std of each style's requirement score across every club's best XI: the yardstick for 'fit'."""
-    raws = {t: [] for t in PLAY_TYPE_PROFILE}
+    raws = {t: [] for t in ALL_PROFILES}
     for _, squad in _df.groupby("Team"):
         xi = auto_select_xi(squad, "4-3-3")
         attrs = squad.set_index("Player")
@@ -757,6 +757,8 @@ PLAY_TYPE_SETTING_FIT = {
         "line":      {"High line": 0.1, "Medium-block": 1.0, "Low defensive line": 0.1},
         "pressing":  {"High Press": 0.1, "Balanced": 1.0, "Low Press": 0.1},
         "attack":    {"Balanced": 1.0, "Focus on Wing Play": 0.2, "Focus on Middle Play": 0.2},
+        "passing":   {"Short": 0.4, "Balanced": 1.0, "Direct": 0.4},
+        "stance":    {"Compact": 1.0, "Force play on the wing": 0.5, "Force play through the middle": 0.5, "Man to man all pitch": 0.0},
     },
     "Gegenpress": {
         "formation": {"4-3-3": 1.0, "4-2-3-1": 0.8, "4-1-3-2": 0.7, "4-4-2": 0.5, "5-3-2": -0.4, "5-2-2-1": -0.6},
@@ -765,6 +767,8 @@ PLAY_TYPE_SETTING_FIT = {
         "line":      {"High line": 1.0, "Medium-block": 0.2, "Low defensive line": -1.0},
         "pressing":  {"High Press": 1.0, "Balanced": 0.0, "Low Press": -1.0},
         "attack":    {"Balanced": 0.0, "Focus on Wing Play": 0.2, "Focus on Middle Play": 0.2},
+        "passing":   {"Short": 0.2, "Balanced": 0.5, "Direct": 0.8},
+        "stance":    {"Man to man all pitch": 1.0, "Force play on the wing": 0.6, "Force play through the middle": 0.4, "Compact": -0.4},
     },
     "Tiki-taka": {
         "formation": {"4-3-3": 1.0, "4-2-3-1": 0.8, "4-1-3-2": 0.4, "4-4-2": -0.2, "5-3-2": -0.6, "5-2-2-1": -0.3},
@@ -773,6 +777,8 @@ PLAY_TYPE_SETTING_FIT = {
         "line":      {"High line": 1.0, "Medium-block": 0.5, "Low defensive line": -0.8},
         "pressing":  {"High Press": 0.5, "Balanced": 0.4, "Low Press": -0.8},
         "attack":    {"Balanced": 0.3, "Focus on Wing Play": -0.5, "Focus on Middle Play": 1.0},
+        "passing":   {"Short": 1.0, "Balanced": 0.2, "Direct": -1.0},
+        "stance":    {"Man to man all pitch": 0.4, "Force play on the wing": 0.4, "Force play through the middle": 0.2, "Compact": 0.2},
     },
     "Catenaccio": {
         "formation": {"5-3-2": 1.0, "5-2-2-1": 1.0, "4-4-2": 0.3, "4-1-3-2": 0.2, "4-2-3-1": 0.0, "4-3-3": -0.6},
@@ -781,6 +787,8 @@ PLAY_TYPE_SETTING_FIT = {
         "line":      {"Low defensive line": 1.0, "Medium-block": 0.4, "High line": -1.0},
         "pressing":  {"Low Press": 1.0, "Balanced": 0.3, "High Press": -1.0},
         "attack":    {"Balanced": 0.2, "Focus on Middle Play": 0.2, "Focus on Wing Play": -0.2},
+        "passing":   {"Direct": 0.6, "Balanced": 0.3, "Short": -0.6},
+        "stance":    {"Compact": 1.0, "Force play on the wing": 0.7, "Force play through the middle": 0.3, "Man to man all pitch": -1.0},
     },
     "Counter-attack": {
         "formation": {"4-1-3-2": 0.9, "4-4-2": 1.0, "4-2-3-1": 0.8, "5-3-2": 0.7, "5-2-2-1": 0.6, "4-3-3": 0.5},
@@ -789,12 +797,16 @@ PLAY_TYPE_SETTING_FIT = {
         "line":      {"Low defensive line": 1.0, "Medium-block": 0.5, "High line": -0.8},
         "pressing":  {"Low Press": 0.9, "Balanced": 0.4, "High Press": -0.7},
         "attack":    {"Focus on Wing Play": 0.8, "Focus on Middle Play": 0.3, "Balanced": 0.2},
+        "passing":   {"Direct": 1.0, "Balanced": 0.3, "Short": -0.7},
+        "stance":    {"Compact": 0.8, "Force play on the wing": 0.7, "Force play through the middle": 0.5, "Man to man all pitch": -0.6},
     },
 }
 # How much each setting counts towards the tactics score.
-PLAY_TYPE_SETTING_WEIGHT = {"formation": 1.0, "mentality": 1.2, "tempo": 0.8, "line": 1.0, "pressing": 1.0, "attack": 0.5}
+PLAY_TYPE_SETTING_WEIGHT = {"formation": 1.0, "mentality": 1.2, "tempo": 0.8, "line": 1.0, "pressing": 1.0, "attack": 0.5,
+                            "passing": 0.8, "stance": 0.8}
 PLAY_TYPE_SETTING_LABEL = {"formation": "Formation", "mentality": "Mentality", "tempo": "Tempo",
-                           "line": "Defensive line", "pressing": "Pressing", "attack": "Attacking preference"}
+                           "line": "Defensive line", "pressing": "Pressing", "attack": "Attacking preference",
+                           "passing": "Passing style", "stance": "Defensive stance"}
 
 # The stance each style wants from each position group: -1 = Defensive, 0 = Balanced, +1 = Attack.
 ROLE_VALUE = {"Attack": 1.0, "Balanced": 0.0, "Defensive": -1.0}
@@ -810,7 +822,8 @@ def _verdict(score: float) -> str:
     return "good" if score >= 0.5 else "poor" if score <= -0.3 else "ok"
 
 def play_type_squad_fit(play_type: str, xi: pd.DataFrame, team: str, formation: str, mentality: str,
-                        tempo: str, line: str, pressing: str, attack_pref: str) -> dict:
+                        tempo: str, line: str, pressing: str, attack_pref: str,
+                        passing: str = "Balanced", stance: str = "Compact") -> dict:
     """Squad fit (0-1) for a Type of Play. It combines
        - the players' attributes (50%),
        - how well every tactical setting you picked suits the style (30%),
@@ -822,7 +835,7 @@ def play_type_squad_fit(play_type: str, xi: pd.DataFrame, team: str, formation: 
     players = play_type_player_fit(play_type, xi, team)
 
     chosen = {"formation": formation, "mentality": mentality, "tempo": tempo,
-              "line": line, "pressing": pressing, "attack": attack_pref}
+              "line": line, "pressing": pressing, "attack": attack_pref, "passing": passing, "stance": stance}
     table = PLAY_TYPE_SETTING_FIT[play_type]
     scores = {k: table[k].get(v, 0.0) for k, v in chosen.items()}
     wsum = sum(PLAY_TYPE_SETTING_WEIGHT.values())
@@ -866,6 +879,94 @@ def play_type_xg_effect(own: str, own_fit: float, opp: str, opp_fit: float,
 def play_type_possession_shift(play_type: str, fit: float) -> float:
     return PLAY_TYPES[play_type]["poss"] * float(np.clip(play_type_quality(fit), 0.5, 1.5))
 
+# ---- Passing style & defensive stance -----------------------------------------
+PASSING_STYLES = ["Short", "Balanced", "Direct"]
+DEFENSIVE_STANCES = ["Force play on the wing", "Compact", "Force play through the middle", "Man to man all pitch"]
+
+# gain scales with how well the players suit it (execution quality); cost is paid regardless.
+# poss = possession shift in points; cards / fatigue are multipliers.
+PASSING_FX = {
+    "Short": dict(gain=0.09, cost=-0.07, poss=5.0, cards=0.95,
+                  desc="Build up with short, quick passes and keep the ball. Suits technical players (Possession, "
+                       "Assist-Creation, Dribbling). Struggles against a man-to-man press and a compact block."),
+    "Balanced": dict(gain=0.0, cost=0.0, poss=0.0, cards=1.0,
+                     desc="A mix of short and long passes, depending on the situation."),
+    "Direct": dict(gain=0.09, cost=-0.07, poss=-5.0, cards=1.0,
+                   desc="Go forward quickly with long balls to the forwards. Suits strong, physical attackers and "
+                        "creative midfielders. Less possession; beats a man-to-man press but is easier for a compact block."),
+}
+STANCE_FX = {
+    "Compact": dict(gain=0.0, cost=0.0, shift=0.0, poss=0.0, fatigue=1.0, cards=1.0,
+                    desc="The standard shape: tight, organised and balanced across the pitch."),
+    "Force play on the wing": dict(gain=0.04, cost=-0.03, shift=0.20, poss=0.0, fatigue=1.0, cards=1.0,
+                                   desc="Close the middle and invite the opponent wide. Pays off against sides that are "
+                                        "stronger through the middle than down the flanks."),
+    "Force play through the middle": dict(gain=0.04, cost=-0.03, shift=-0.20, poss=0.0, fatigue=1.0, cards=1.0,
+                                          desc="Close the flanks and make the opponent play through the centre. Pays off "
+                                               "against sides that are stronger on the wings."),
+    "Man to man all pitch": dict(gain=0.14, cost=-0.10, shift=0.0, poss=2.0, fatigue=1.35, cards=1.45,
+                                 desc="Everyone marks a man over the whole pitch. Strong against short passing, but it "
+                                      "tires the team fast, brings many more cards and is exposed by direct balls."),
+}
+# Passing style vs the opponent's defensive stance: bonus to the passing side's xG.
+PASSING_MATCHUP = {
+    "Short":  {"Man to man all pitch": -0.08, "Compact": -0.02, "Force play on the wing": 0.0, "Force play through the middle": 0.03},
+    "Direct": {"Man to man all pitch": 0.08, "Compact": -0.01, "Force play on the wing": 0.03, "Force play through the middle": -0.01},
+}
+# What each option asks of the players (same format as PLAY_TYPE_PROFILE).
+TACTIC_PROFILES = {
+    "Short": [
+        (("FB & WB", "MF", "AM & W", "CF"), {"Possession": 0.50, "Assist-Creation": 0.30, "Dribbling": 0.20}, 0.75),
+        (("CB",), {"Possession": 1.0}, 0.25),
+    ],
+    "Direct": [
+        (("AM & W", "CF"), {"Physical": 0.35, "Goal-Scoring": 0.35, "Attack": 0.30}, 0.60),
+        (("MF",), {"Assist-Creation": 0.60, "Physical": 0.40}, 0.40),
+    ],
+    "Man to man all pitch": [(_OUTFIELD, {"Physical": 0.50, "Defense": 0.35, "Attack": 0.15}, 1.0)],
+    "Force play on the wing": [(("CB", "FB & WB", "MF"), {"Defense": 0.65, "Physical": 0.35}, 1.0)],
+    "Force play through the middle": [(("FB & WB", "AM & W", "MF"), {"Defense": 0.60, "Physical": 0.40}, 1.0)],
+}
+ALL_PROFILES = {**PLAY_TYPE_PROFILE, **TACTIC_PROFILES}
+
+def tactic_player_fit(option: str, xi: pd.DataFrame, team: str) -> float:
+    """0-1 fit of the XI's players for a passing style / defensive stance (0.5 for the neutral options)."""
+    if option in ("Balanced", "Compact"):
+        return 0.5
+    return play_type_player_fit(option, xi, team)
+
+def cards_multiplier(play_type: str, passing: str = "Balanced", stance: str = "Compact") -> float:
+    return PLAY_TYPES[play_type]["cards"] * PASSING_FX[passing]["cards"] * STANCE_FX[stance]["cards"]
+
+def fatigue_multiplier(play_type: str, stance: str = "Compact") -> float:
+    return PLAY_TYPES[play_type]["fatigue"] * STANCE_FX[stance]["fatigue"]
+
+def stance_lane_effect(att_lanes: dict, def_lanes: dict, att_pref: str, shift: float) -> float:
+    """xG change for the attacking side when the defending side funnels play to the wings (shift > 0) or the middle.
+    It hurts the attacker when the lane he is pushed into is his weaker one."""
+    w_wide = ATTACK_PREF_LANE_SPLIT[att_pref][0]
+    wing_edge = att_lanes["att_wide"] - def_lanes["def_wide"]
+    mid_edge = att_lanes["att_cent"] - def_lanes["def_cent"]
+    new_w = float(np.clip(w_wide + shift, 0.05, 0.95))
+    return (new_w - w_wide) * (wing_edge - mid_edge) / 20
+
+def passing_stance_xg_effect(own_pass: str, own_pass_fit: float, own_stance: str, own_pref: str, own_lanes: dict,
+                             opp_stance: str, opp_stance_fit: float, opp_lanes: dict) -> float:
+    """xG change for `own` from his passing style (and how it meets the opponent's stance), his own stance's
+    attacking cost, and the opponent's stance (which cuts his chances and funnels his attacks)."""
+    p, s_own, s_opp = PASSING_FX[own_pass], STANCE_FX[own_stance], STANCE_FX[opp_stance]
+    q_pass, q_opp = play_type_quality(own_pass_fit), play_type_quality(opp_stance_fit)
+    shift = s_opp["shift"] * float(np.clip(q_opp, 0.5, 1.5))
+    bonus = (p["gain"] * q_pass + p["cost"]
+             + PASSING_MATCHUP.get(own_pass, {}).get(opp_stance, 0.0)
+             + s_own["cost"]
+             - s_opp["gain"] * q_opp
+             + stance_lane_effect(own_lanes, opp_lanes, own_pref, shift))
+    return float(np.clip(bonus, -0.4, 0.4))
+
+def passing_stance_possession_shift(passing: str, pass_fit: float, stance: str) -> float:
+    return PASSING_FX[passing]["poss"] * float(np.clip(play_type_quality(pass_fit), 0.5, 1.5)) + STANCE_FX[stance]["poss"]
+
 def generate_team_stats(xg: float, goals: int, possession: float, press: str, rng, card_mult: float = 1.0) -> dict:
     """Box-score numbers for one team, kept consistent with the simulated xG, goals and possession."""
     shots = max(goals, int(rng.poisson(xg / 0.11)))
@@ -899,6 +1000,7 @@ MENTALITY_LOG_SCALE = 0.9                       # MENTALITY_MOD (rating %) -> lo
 TACTIC_LOG_CAP, XG_REF = 0.40, 1.25             # style + Type of Play can change a side's xG by at most about +-33%
 TACTIC_TOTAL_CAP = 0.50                         # ALL tactical choices together (mentality, line, tempo, style, Type of Play)
 XG_MIN, XG_MAX = 0.30, 3.8
+RED_OWN_PENALTY, RED_OPP_GAIN = 0.20, 0.40      # log-xG per full match played with 10 men: own chances down, opponent's up
 LINE_ATT_MOD = {"High line": 0.05, "Medium-block": 0.0, "Low defensive line": -0.05}
 LINE_DEF_MOD = {"High line": -0.05, "Medium-block": 0.0, "Low defensive line": 0.05}
 
@@ -922,6 +1024,9 @@ def simulate_match(home_xi, away_xi,
                    home_press="Balanced", away_press="Balanced",
                    home_pref="Balanced", away_pref="Balanced",
                    home_type="Balanced", away_type="Balanced", home_fit=0.5, away_fit=0.5,
+                   home_ten_share=0.0, away_ten_share=0.0,
+                   home_pass="Balanced", away_pass="Balanced", home_stance="Compact", away_stance="Compact",
+                   home_pass_fit=0.5, away_pass_fit=0.5, home_stance_fit=0.5, away_stance_fit=0.5,
                    home_adv=0.28, rng=None, home_team=None, away_team=None):
     rng = rng or np.random.default_rng()
     
@@ -939,6 +1044,10 @@ def simulate_match(home_xi, away_xi,
     away_strength = 6.0 * (za["att"] + za["mid"] + za["def"]) / 3
     type_home = play_type_xg_effect(home_type, home_fit, away_type, away_fit, home_strength, away_strength, True)
     type_away = play_type_xg_effect(away_type, away_fit, home_type, home_fit, away_strength, home_strength, False)
+    ps_home = passing_stance_xg_effect(home_pass, home_pass_fit, home_stance, home_pref, h["lanes"],
+                                       away_stance, away_stance_fit, a["lanes"])
+    ps_away = passing_stance_xg_effect(away_pass, away_pass_fit, away_stance, away_pref, a["lanes"],
+                                       home_stance, home_stance_fit, h["lanes"])
 
     def tactic_log(xg_delta):
         return TACTIC_LOG_CAP * float(np.tanh(xg_delta / XG_REF / TACTIC_LOG_CAP))
@@ -953,10 +1062,13 @@ def simulate_match(home_xi, away_xi,
 
     log_home = (np.log(XG_BASE) + XG_HOME_LOG_PER_ADV * home_adv
                 + XG_ATT_SLOPE * (zh["att"] - za["def"]) + XG_MID_SLOPE * (zh["mid"] - za["mid"])
-                + all_tactics_log(h_att_m, a_def_m, home_line, away_line, style_home + type_home, home_tempo))
+                + all_tactics_log(h_att_m, a_def_m, home_line, away_line, style_home + type_home + ps_home, home_tempo))
     log_away = (np.log(XG_BASE) - XG_HOME_LOG_PER_ADV * home_adv
                 + XG_ATT_SLOPE * (za["att"] - zh["def"]) + XG_MID_SLOPE * (za["mid"] - zh["mid"])
-                + all_tactics_log(a_att_m, h_def_m, away_line, home_line, style_away + type_away, away_tempo))
+                + all_tactics_log(a_att_m, h_def_m, away_line, home_line, style_away + type_away + ps_away, away_tempo))
+    # Red cards: the share of the match a side plays with 10 men (a red at the 30th minute = 0.67)
+    log_home += RED_OPP_GAIN * away_ten_share - RED_OWN_PENALTY * home_ten_share
+    log_away += RED_OPP_GAIN * home_ten_share - RED_OWN_PENALTY * away_ten_share
     xg_home = float(np.clip(np.exp(log_home), XG_MIN, XG_MAX))
     xg_away = float(np.clip(np.exp(log_away), XG_MIN, XG_MAX))
 
@@ -967,7 +1079,9 @@ def simulate_match(home_xi, away_xi,
     base_possession_home = 50 + np.clip((zh["mid"] - za["mid"]) * 6.0, -22, 22)
     press_poss_shift = (press_mod[home_press] - press_mod[away_press]) * 50
     style_poss_shift = ATTACK_PREF_POSSESSION_SHIFT[home_pref] - ATTACK_PREF_POSSESSION_SHIFT[away_pref]
-    type_poss_shift = play_type_possession_shift(home_type, home_fit) - play_type_possession_shift(away_type, away_fit)
+    type_poss_shift = (play_type_possession_shift(home_type, home_fit) - play_type_possession_shift(away_type, away_fit)
+                       + passing_stance_possession_shift(home_pass, home_pass_fit, home_stance)
+                       - passing_stance_possession_shift(away_pass, away_pass_fit, away_stance))
     possession_home = np.clip(base_possession_home + press_poss_shift + style_poss_shift + type_poss_shift, 20, 80)
     
     return {
@@ -975,8 +1089,8 @@ def simulate_match(home_xi, away_xi,
         "xg_home": round(xg_home, 2), "xg_away": round(xg_away, 2),
         "possession_home": round(possession_home, 1),
         "play_type_bonus_home": round(type_home, 3), "play_type_bonus_away": round(type_away, 3),
-        "stats_home": generate_team_stats(xg_home, hg, possession_home, home_press, rng, PLAY_TYPES[home_type]["cards"]),
-        "stats_away": generate_team_stats(xg_away, ag, 100 - possession_home, away_press, rng, PLAY_TYPES[away_type]["cards"]),
+        "stats_home": generate_team_stats(xg_home, hg, possession_home, home_press, rng, cards_multiplier(home_type, home_pass, home_stance)),
+        "stats_away": generate_team_stats(xg_away, ag, 100 - possession_home, away_press, rng, cards_multiplier(away_type, away_pass, away_stance)),
     }
 
 # ---- Bench & substitutions ------------------------------------------------
@@ -1013,10 +1127,11 @@ def _fatigue(minutes_on_pitch, mult: float = 1.0):
 
 _FATIGUE_MEAN_90 = float(_fatigue(np.arange(90)).mean())
 
-def plan_substitutions(xi: pd.DataFrame, bench: pd.DataFrame, rng) -> list:
+def plan_substitutions(xi: pd.DataFrame, bench: pd.DataFrame, rng, exclude=()) -> list:
     """Decide who comes off, when, and who replaces them. Tired / weaker / attacking players go off first;
-    the replacement is the best bench player for that position (closest position if there is none)."""
-    starters = xi[(xi["Player"] != "Select Player") & (xi["Slot"] != "GK")]
+    the replacement is the best bench player for that position (closest position if there is none).
+    Players in `exclude` (sent off) cannot be substituted."""
+    starters = xi[(xi["Player"] != "Select Player") & (xi["Slot"] != "GK") & (~xi["Player"].isin(list(exclude)))]
     if bench is None or len(bench) == 0:
         return []
     outfield_bench = bench[bench["Position"] != "GK"]
@@ -1054,18 +1169,23 @@ def plan_substitutions(xi: pd.DataFrame, bench: pd.DataFrame, rng) -> list:
         available.remove(j)
     return subs
 
-def build_roster(xi: pd.DataFrame, subs: list) -> pd.DataFrame:
-    """Starters + substitutes, each with the minute they came on / went off."""
+def build_roster(xi: pd.DataFrame, subs: list, reds: list = ()) -> pd.DataFrame:
+    """Starters + substitutes, each with the minute they came on / went off. A sent-off player is not replaced."""
     roster = xi.copy()
     roster["on_min"] = 0
     roster["off_min"] = 91          # 91 = still on the pitch at full time
+    roster["sent_off"] = False
+    for r in reds:
+        mask = roster["Player"] == r["player"]
+        roster.loc[mask, "off_min"] = r["minute"]
+        roster.loc[mask, "sent_off"] = True
     extra = []
     for s in subs:
         roster.loc[roster["Label"] == s["label"], "off_min"] = s["minute"]
         extra.append({
             "Slot": s["slot"], "Label": s["label"], "Player": s["on"], "Position": s["on_position"],
             "OVR": s["on_ovr"], "OOP": s["on_position"] != s["slot"], "Role": s["role"],
-            "on_min": s["minute"], "off_min": 91,
+            "on_min": s["minute"], "off_min": 91, "sent_off": False,
         })
     if extra:
         roster = pd.concat([roster, pd.DataFrame(extra)], ignore_index=True)
@@ -1075,9 +1195,11 @@ def effective_xi(roster: pd.DataFrame, fatigue_mult: float = 1.0) -> pd.DataFram
     """One row per slot whose OVR is the minutes-weighted, fatigue-adjusted rating of whoever played there.
     A starter who plays all 90 minutes keeps exactly his own OVR; fresh legs help late on."""
     totals = {}
-    for label, ovr, on, off in zip(roster["Label"].tolist(), roster["OVR"].tolist(),
-                                   roster["on_min"].tolist(), roster["off_min"].tolist()):
-        on, off = int(on), min(int(off), 90)
+    red = roster["sent_off"].tolist() if "sent_off" in roster.columns else [False] * len(roster)
+    for label, ovr, on, off, was_sent_off in zip(roster["Label"].tolist(), roster["OVR"].tolist(),
+                                                 roster["on_min"].tolist(), roster["off_min"].tolist(), red):
+        # a sent-off player's rating still counts in full: playing with 10 men is modelled by RED_* in simulate_match
+        on, off = int(on), 90 if was_sent_off else min(int(off), 90)
         if off <= on:
             continue
         share = float(_fatigue(np.arange(on, off) - on, fatigue_mult).sum()) / (90 * _FATIGUE_MEAN_90)
@@ -1158,9 +1280,43 @@ def pick_card_events(xi: pd.DataFrame, n_cards: int, rng=None):
     events.sort(key=lambda e: e["minute"])
     return events
 
+# ---- Red cards & suspensions -------------------------------------------------
+RED_CARD_RATE = 0.07          # per team per match (about 0.14 a match, in line with the big European leagues)
+RED_PRESS_FACTOR = {"High Press": 1.25, "Balanced": 1.0, "Low Press": 0.9}
+# (reason, weight, matches banned)
+RED_CARD_REASONS = [("Second yellow card", 0.40, 1), ("Serious foul play", 0.32, 2),
+                    ("Denying a goal-scoring opportunity", 0.20, 1), ("Violent conduct", 0.08, 3)]
+
+def plan_red_cards(xi: pd.DataFrame, rng, press: str = "Balanced", card_mult: float = 1.0) -> list:
+    """Red cards for a team's starters, decided before the match so the team really plays on with 10 men.
+    A second-yellow red also carries the minute of the first yellow."""
+    starters = xi[xi["Player"] != "Select Player"].reset_index(drop=True)
+    if starters.empty:
+        return []
+    n = min(int(rng.poisson(RED_CARD_RATE * card_mult * RED_PRESS_FACTOR.get(press, 1.0))), 2, len(starters))
+    if n <= 0:
+        return []
+    w = starters["Slot"].map(CARD_SLOT_WEIGHT).fillna(1.0).to_numpy(dtype=float)
+    picked = rng.choice(len(starters), size=n, replace=False, p=w / w.sum())
+    weights = np.array([r[1] for r in RED_CARD_REASONS])
+    reds = []
+    for i in picked:
+        reason, _, ban = RED_CARD_REASONS[int(rng.choice(len(RED_CARD_REASONS), p=weights / weights.sum()))]
+        if reason == "Second yellow card":
+            minute = int(rng.integers(30, 90))
+            first_yellow = int(rng.integers(8, minute - 4))
+        else:
+            minute = int(rng.integers(10, 90))
+            first_yellow = None
+        r = starters.iloc[i]
+        reds.append({"player": r["Player"], "label": r["Label"], "slot": r["Slot"], "minute": minute,
+                     "reason": reason, "ban": ban, "first_yellow": first_yellow})
+    reds.sort(key=lambda x: x["minute"])
+    return reds
+
 def build_match_report(home, away, round_no, result, home_events, away_events, home_cards, away_cards,
-                       home_subs=(), away_subs=(), home_tactics="", away_tactics="") -> dict:
-    """One timeline (goals with running score, cards and substitutions) plus the box-score stats."""
+                       home_subs=(), away_subs=(), home_tactics="", away_tactics="", home_reds=(), away_reds=()) -> dict:
+    """One timeline (goals with running score, cards, red cards and substitutions) plus the box-score stats."""
     events = []
     for side, subs in (("home", home_subs), ("away", away_subs)):
         for s in subs:
@@ -1173,17 +1329,29 @@ def build_match_report(home, away, round_no, result, home_events, away_events, h
         for e in cards:
             events.append({"minute": e["minute"], "side": side, "type": "card",
                            "player": e["player"], "reason": e["reason"]})
-    events.sort(key=lambda e: (e["minute"], {"goal": 0, "card": 1, "sub": 2}[e["type"]]))
+    for side, reds in (("home", home_reds), ("away", away_reds)):
+        for r in reds:
+            if r.get("first_yellow") is not None:       # a second-yellow red: show the first yellow too
+                events.append({"minute": r["first_yellow"], "side": side, "type": "card", "player": r["player"], "reason": "Foul"})
+            events.append({"minute": r["minute"], "side": side, "type": "red", "player": r["player"],
+                           "reason": r["reason"], "ban": r["ban"]})
+    events.sort(key=lambda e: (e["minute"], {"goal": 0, "card": 1, "red": 1, "sub": 2}[e["type"]]))
     hs = as_ = 0
     for e in events:
         if e["type"] == "goal":
             if e["side"] == "home": hs += 1
             else: as_ += 1
             e["score"] = (hs, as_)
+    stats = {}
+    for side in ("home", "away"):
+        s = dict(result[f"stats_{side}"])
+        s["yellow_cards"] = sum(1 for e in events if e["type"] == "card" and e["side"] == side)
+        s["red_cards"] = sum(1 for e in events if e["type"] == "red" and e["side"] == side)
+        stats[side] = s
     return {
         "home": home, "away": away, "round": round_no, "home_tactics": home_tactics, "away_tactics": away_tactics,
         "hg": result["home_goals"], "ag": result["away_goals"],
-        "stats_home": result["stats_home"], "stats_away": result["stats_away"],
+        "stats_home": stats["home"], "stats_away": stats["away"],
         "events": events,
     }
 
@@ -1228,6 +1396,7 @@ MATCH_REPORT_CSS = """
     background: rgba(255,255,255,0.05); border: 1px solid var(--border-soft); font-family: 'Space Mono', monospace; font-size: 0.75rem; font-weight: 700; }
 .mr-in { color: #22c55e; font-size: 0.7rem; }
 .mr-out { color: #ef4444; font-size: 0.7rem; }
+.mr-rc { display: inline-block; width: 10px; height: 14px; border-radius: 2px; background: #ef4444; }
 .mr-yc { display: inline-block; width: 10px; height: 14px; border-radius: 2px; background: #ffd400; }
 .mr-empty { padding: 12px 18px; color: var(--text-muted); font-size: 0.8rem; }
 </style>
@@ -1267,6 +1436,7 @@ def match_report_html(rep: dict) -> str:
         stat_row("Shots on target", sh["on_target"], sa["on_target"]),
         stat_row("Corners", sh["corners"], sa["corners"]),
         stat_row("Yellow cards", sh["yellow_cards"], sa["yellow_cards"]),
+        stat_row("Red cards", sh.get("red_cards", 0), sa.get("red_cards", 0)),
     ])
 
     def event_row(e):
@@ -1278,6 +1448,9 @@ def match_report_html(rep: dict) -> str:
             main = (f'<b>{_report_name(e["player"])}</b>{assist}' if side == "home"
                     else (f'<i>({_report_name(e["assist"])})</i> ' if e.get("assist") else "") + f'<b>{_report_name(e["player"])}</b>')
             chip_html = f'<span class="mr-chip">{chip}</span>'
+        elif e["type"] == "red":
+            main = f'<b>{_report_name(e["player"])}</b> <i>({html_lib.escape(e["reason"])})</i>'
+            chip_html = '<span class="mr-chip"><span class="mr-rc"></span></span>'
         elif e["type"] == "sub":
             on_n, off_n = _report_name(e["player"]), _report_name(e["off"])
             main = f'<b>{on_n}</b> <i>{off_n}</i>' if side == "home" else f'<i>{off_n}</i> <b>{on_n}</b>'
@@ -1374,10 +1547,15 @@ def init_session():
     ss.setdefault("tempo", "Normal")
     ss.setdefault("oop_line", "Medium-block")
     ss.setdefault("pressing", "Balanced")
+    ss.setdefault("passing_style", "Balanced")
+    ss.setdefault("def_stance", "Compact")
+    ss.setdefault("season_seed", 0)
     ss.setdefault("attack_pref", "Balanced")
     ss.setdefault("play_type", "Balanced")
     ss.setdefault("manual_lineup", {})   
     ss.setdefault("bench", [])
+    ss.setdefault("suspensions", {})
+    ss.setdefault("assistant_notes", [])
     ss.setdefault("player_roles", {})    
     ss.setdefault("locked_signature", None)
     ss.setdefault("schedule", [])
@@ -1404,13 +1582,18 @@ def start_new_season(team: str):
     ss.tempo = "Normal"
     ss.oop_line = "Medium-block"
     ss.pressing = "Balanced"
+    ss.passing_style = "Balanced"
+    ss.def_stance = "Compact"
+    ss.season_seed = random.randrange(10**9)
     ss.attack_pref = "Balanced"
     ss.play_type = "Balanced"
-    for attr in ("attack_pref", "play_type", "mentality", "tempo", "oop_line", "pressing"):
+    for attr in ("attack_pref", "play_type", "mentality", "tempo", "oop_line", "pressing", "passing_style", "def_stance"):
         ss.pop(f"{attr}_choice", None)
     ss.manual_lineup = {}
     ss.bench = []
     ss.pop("bench_select", None)
+    ss.suspensions = {}
+    ss.assistant_notes = []
     ss.player_roles = {}
     ss.locked_signature = None
     teams = ALL_TEAMS[:]
@@ -1436,6 +1619,78 @@ def reset_all():
 
 def get_user_squad():
     return DF[DF["Team"] == ss.user_team].copy()
+
+def scout_rng(team: str, matchday: int) -> random.Random:
+    """A seeded generator per (season, club, matchday): the AI's plan for a match is the same whether it is
+    read by the scouting report beforehand or used to play the match."""
+    return random.Random(f"{ss.get('season_seed', 0)}|{team}|{matchday}")
+
+def suspended_for(team: str) -> dict:
+    """{player: matches still to miss} for a club."""
+    return {p: n for p, n in ss.get("suspensions", {}).get(team, {}).items() if n > 0}
+
+def available_squad() -> pd.DataFrame:
+    """The user's squad without suspended players: the pool for the XI, the bench and the auto-picks."""
+    squad = get_user_squad()
+    out = set(suspended_for(ss.user_team))
+    return squad[~squad["Player"].isin(out)].copy() if out else squad
+
+def apply_suspensions_after_match(team: str, served: set, reds: list):
+    """A match counts off one game of every ban being served, then new red cards add their bans."""
+    bans = ss.suspensions.setdefault(team, {})
+    for p in served:
+        if p in bans:
+            bans[p] -= 1
+            if bans[p] <= 0:
+                del bans[p]
+    for r in reds:
+        bans[r["player"]] = r["ban"]
+
+def drop_sent_off_from_user_lineup(reds: list):
+    """Sent-off players leave the user's XI right away, so the next game cannot be played with them."""
+    for r in reds:
+        for key, player in list(ss.manual_lineup.items()):
+            if player == r["player"]:
+                ss.manual_lineup[key] = "Select Player"
+        ss.bench = [p for p in ss.bench if p != r["player"]]
+        if "bench_select" in ss:
+            ss["bench_select"] = [p for p in ss["bench_select"] if p != r["player"]]
+
+def _best_replacement(pool: pd.DataFrame, group: str):
+    """Best player for a slot: natural position first, otherwise the closest position (never a keeper outfield)."""
+    if group != "GK":
+        pool = pool[pool["Position"] != "GK"]
+    if pool.empty:
+        return None
+    dist = pool["Position"].map(lambda p: _group_distance(p, group))
+    return pool.assign(_d=dist).sort_values(["_d", "OVR"], ascending=[True, False]).iloc[0]
+
+def autofix_user_lineup() -> list:
+    """Assistant manager: fill empty slots and replace suspended players with the best available alternative."""
+    squad = available_squad()
+    names = set(squad["Player"])
+    taken = {p for p in ss.manual_lineup.values() if p in names}
+    notes = []
+    for (grp, code), old in list(ss.manual_lineup.items()):
+        if old in names:
+            continue
+        pick = _best_replacement(squad[~squad["Player"].isin(taken)], grp)
+        if pick is None:
+            continue
+        ss.manual_lineup[(grp, code)] = pick["Player"]
+        taken.add(pick["Player"])
+        notes.append(f"Matchday {ss.matchday + 1}: {pick['Player']} starts at {code}"
+                     + (f" in place of {old}" if old != "Select Player" else ""))
+    ss.bench = [p for p in ss.bench if p in names and p not in taken]
+    if "bench_select" in ss:
+        ss["bench_select"] = list(ss.bench)
+    ss.assistant_notes = list(ss.get("assistant_notes", [])) + notes
+    return notes
+
+def assistant_fix_and_lock():
+    """Button callback on the Play page."""
+    autofix_user_lineup()
+    ss.locked_signature = current_tactics_signature()
 
 def current_user_xi():
     squad = get_user_squad()
@@ -1464,6 +1719,7 @@ def sync_manual_lineup():
 def current_tactics_signature():
     return (
         ss.formation, ss.mentality, ss.tempo, ss.oop_line, ss.pressing, ss.attack_pref, ss.play_type,
+        ss.passing_style, ss.def_stance,
         tuple(sorted(ss.manual_lineup.items())), tuple(sorted(ss.bench)),
         tuple(sorted(ss.player_roles.items())),
     )
@@ -1491,7 +1747,7 @@ def apply_auto_pick():
     to be updated too, otherwise they keep saying "Select Player" and the selection
     loop overwrites the picks straight away.
     """
-    auto_xi = auto_select_xi(get_user_squad(), ss.formation)
+    auto_xi = auto_select_xi(available_squad(), ss.formation)
     for _, code in slot_labels(ss.formation):
         ss[slot_widget_key(code)] = "Select Player"
     for key in list(ss.manual_lineup):
@@ -1502,7 +1758,7 @@ def apply_auto_pick():
 
 def user_bench(xi: pd.DataFrame) -> pd.DataFrame:
     """The user's chosen bench; if none is chosen (or it is stale) the assistant manager picks one."""
-    squad = get_user_squad()
+    squad = available_squad()
     starters = set(xi["Player"])
     chosen = squad[squad["Player"].isin(ss.bench) & ~squad["Player"].isin(starters)]
     return chosen if not chosen.empty else auto_select_bench(squad, starters)
@@ -1510,73 +1766,97 @@ def user_bench(xi: pd.DataFrame) -> pd.DataFrame:
 def apply_auto_bench():
     """Button callback (same keyed-widget rule as apply_auto_pick: set the widget's own state)."""
     starters = {p for p in ss.manual_lineup.values() if p and p != "Select Player"}
-    ss["bench_select"] = auto_select_bench(get_user_squad(), starters)["Player"].tolist()
+    ss["bench_select"] = auto_select_bench(available_squad(), starters)["Player"].tolist()
 
 def is_team_locked() -> bool:
     sig = ss.get("locked_signature")
     return sig is not None and sig == current_tactics_signature()
 
 @st.cache_data(show_spinner=False)
-def cached_auto_xi(team: str, formation: str) -> pd.DataFrame:
-    """A club's best XI for a formation (with default roles). Deterministic, so it is cached."""
-    xi = auto_select_xi(DF[DF["Team"] == team], formation)
+def cached_auto_xi(team: str, formation: str, suspended: tuple = ()) -> pd.DataFrame:
+    """A club's best XI for a formation (with default roles), leaving out suspended players. Deterministic, so it is cached."""
+    squad = DF[DF["Team"] == team]
+    xi = auto_select_xi(squad[~squad["Player"].isin(list(suspended))], formation)
     xi["Role"] = xi["Slot"].apply(default_role_for)
     return xi
 
 @st.cache_data(show_spinner=False)
-def cached_auto_bench(team: str, starters: tuple) -> pd.DataFrame:
-    return auto_select_bench(DF[DF["Team"] == team], list(starters))
+def cached_auto_bench(team: str, starters: tuple, suspended: tuple = ()) -> pd.DataFrame:
+    squad = DF[DF["Team"] == team]
+    return auto_select_bench(squad[~squad["Player"].isin(list(suspended))], list(starters))
 
-def ai_lineup_for(team: str):
-    formation = random.choice(["4-3-3", "4-4-2", "4-2-3-1", "4-1-3-2", "5-2-2-1"])
-    mentality = random.choice(["Defensive", "Balanced", "Balanced", "Attacking"])
-    tempo = random.choice(TEMPOS)
-    line = random.choice(OOP_LINES)
-    press = random.choice(PRESS_TYPES)
-    style = random.choice(ATTACK_PREFS)
-    xi = cached_auto_xi(team, formation)
+def ai_lineup_for(team: str, rnd=random):
+    """A club's plan for a match. Pass a seeded random.Random to get the same plan every time (used by scouting)."""
+    formation = rnd.choice(["4-3-3", "4-4-2", "4-2-3-1", "4-1-3-2", "5-2-2-1"])
+    mentality = rnd.choice(["Defensive", "Balanced", "Balanced", "Attacking"])
+    tempo = rnd.choice(TEMPOS)
+    line = rnd.choice(OOP_LINES)
+    press = rnd.choice(PRESS_TYPES)
+    style = rnd.choice(ATTACK_PREFS)
+    passing = rnd.choices(PASSING_STYLES, weights=[0.30, 0.40, 0.30])[0]
+    stance = rnd.choices(DEFENSIVE_STANCES, weights=[0.25, 0.40, 0.25, 0.10])[0]
+    xi = cached_auto_xi(team, formation, tuple(sorted(suspended_for(team))))
     # Clubs lean towards the Type of Play their players suit best
-    fits = [play_type_squad_fit(t, xi, team, formation, mentality, tempo, line, press, style)["fit"] for t in PLAY_TYPE_NAMES]
-    play_type = random.choices(PLAY_TYPE_NAMES, weights=[float(np.exp(4 * (f - 0.5))) for f in fits])[0]
-    return xi, mentality, tempo, line, press, formation, style, play_type
+    fits = [play_type_squad_fit(t, xi, team, formation, mentality, tempo, line, press, style, passing, stance)["fit"]
+            for t in PLAY_TYPE_NAMES]
+    play_type = rnd.choices(PLAY_TYPE_NAMES, weights=[float(np.exp(4 * (f - 0.5))) for f in fits])[0]
+    return xi, mentality, tempo, line, press, formation, style, play_type, passing, stance
 
 def play_fixture(home, away, rng):
     if home == ss.user_team:
-        home_xi, home_ment, home_tempo, home_line, home_press, home_formation, home_pref, home_type = current_user_xi(), ss.mentality, ss.tempo, ss.oop_line, ss.pressing, ss.formation, ss.attack_pref, ss.play_type
+        home_xi, home_ment, home_tempo, home_line, home_press, home_formation, home_pref, home_type, home_pass, home_stance = (
+            current_user_xi(), ss.mentality, ss.tempo, ss.oop_line, ss.pressing, ss.formation, ss.attack_pref, ss.play_type,
+            ss.passing_style, ss.def_stance)
     else:
-        home_xi, home_ment, home_tempo, home_line, home_press, home_formation, home_pref, home_type = ai_lineup_for(home)
-        
-    if away == ss.user_team:
-        away_xi, away_ment, away_tempo, away_line, away_press, away_formation, away_pref, away_type = current_user_xi(), ss.mentality, ss.tempo, ss.oop_line, ss.pressing, ss.formation, ss.attack_pref, ss.play_type
-    else:
-        away_xi, away_ment, away_tempo, away_line, away_press, away_formation, away_pref, away_type = ai_lineup_for(away)
+        home_xi, home_ment, home_tempo, home_line, home_press, home_formation, home_pref, home_type, home_pass, home_stance = (
+            ai_lineup_for(home, scout_rng(home, ss.matchday)))
 
-    # Bench + substitutions are decided up front, so they shape the result (fresh legs, weaker cover)
-    home_bench = user_bench(home_xi) if home == ss.user_team else cached_auto_bench(home, tuple(home_xi["Player"]))
-    away_bench = user_bench(away_xi) if away == ss.user_team else cached_auto_bench(away, tuple(away_xi["Player"]))
-    home_subs = plan_substitutions(home_xi, home_bench, rng)
-    away_subs = plan_substitutions(away_xi, away_bench, rng)
-    home_roster = build_roster(home_xi, home_subs)
-    away_roster = build_roster(away_xi, away_subs)
+    if away == ss.user_team:
+        away_xi, away_ment, away_tempo, away_line, away_press, away_formation, away_pref, away_type, away_pass, away_stance = (
+            current_user_xi(), ss.mentality, ss.tempo, ss.oop_line, ss.pressing, ss.formation, ss.attack_pref, ss.play_type,
+            ss.passing_style, ss.def_stance)
+    else:
+        away_xi, away_ment, away_tempo, away_line, away_press, away_formation, away_pref, away_type, away_pass, away_stance = (
+            ai_lineup_for(away, scout_rng(away, ss.matchday)))
+
+    home_served, away_served = set(suspended_for(home)), set(suspended_for(away))     # bans served in this match
+    home_bench = (user_bench(home_xi) if home == ss.user_team
+                  else cached_auto_bench(home, tuple(home_xi["Player"]), tuple(sorted(home_served))))
+    away_bench = (user_bench(away_xi) if away == ss.user_team
+                  else cached_auto_bench(away, tuple(away_xi["Player"]), tuple(sorted(away_served))))
+    # Red cards come first: a sent-off player cannot be substituted and his team plays on with 10 men
+    home_reds = plan_red_cards(home_xi, rng, home_press, cards_multiplier(home_type, home_pass, home_stance))
+    away_reds = plan_red_cards(away_xi, rng, away_press, cards_multiplier(away_type, away_pass, away_stance))
+    home_subs = plan_substitutions(home_xi, home_bench, rng, exclude={r["player"] for r in home_reds})
+    away_subs = plan_substitutions(away_xi, away_bench, rng, exclude={r["player"] for r in away_reds})
+    home_roster = build_roster(home_xi, home_subs, home_reds)
+    away_roster = build_roster(away_xi, away_subs, away_reds)
     home_fit = play_type_squad_fit(home_type, home_xi, home, home_formation, home_ment, home_tempo,
-                                   home_line, home_press, home_pref)["fit"]
+                                   home_line, home_press, home_pref, home_pass, home_stance)["fit"]
     away_fit = play_type_squad_fit(away_type, away_xi, away, away_formation, away_ment, away_tempo,
-                                   away_line, away_press, away_pref)["fit"]
+                                   away_line, away_press, away_pref, away_pass, away_stance)["fit"]
 
     result = simulate_match(
-        effective_xi(home_roster, PLAY_TYPES[home_type]["fatigue"]),
-        effective_xi(away_roster, PLAY_TYPES[away_type]["fatigue"]), 
+        effective_xi(home_roster, fatigue_multiplier(home_type, home_stance)),
+        effective_xi(away_roster, fatigue_multiplier(away_type, away_stance)), 
         home_ment, away_ment, 
         home_tempo, away_tempo, 
         home_line, away_line, 
         home_press, away_press, 
         home_pref=home_pref, away_pref=away_pref,
         home_type=home_type, away_type=away_type, home_fit=home_fit, away_fit=away_fit,
+        home_pass=home_pass, away_pass=away_pass, home_stance=home_stance, away_stance=away_stance,
+        home_pass_fit=tactic_player_fit(home_pass, home_xi, home), away_pass_fit=tactic_player_fit(away_pass, away_xi, away),
+        home_stance_fit=tactic_player_fit(home_stance, home_xi, home), away_stance_fit=tactic_player_fit(away_stance, away_xi, away),
+        home_ten_share=sum(max(0, 90 - r["minute"]) / 90 for r in home_reds),
+        away_ten_share=sum(max(0, 90 - r["minute"]) / 90 for r in away_reds),
         rng=rng,
         home_team=home,
         away_team=away
     )
     
+    result["stats_home"]["red_cards"] = len(home_reds)
+    result["stats_away"]["red_cards"] = len(away_reds)
     home_events = pick_goal_events(home_roster, result["home_goals"], rng, style=home_pref, play_type=home_type)
     away_events = pick_goal_events(away_roster, result["away_goals"], rng, style=away_pref, play_type=away_type)
 
@@ -1587,6 +1867,12 @@ def play_fixture(home, away, rng):
             ss.assists[e["assist"]] = ss.assists.get(e["assist"], 0) + 1
 
     update_table(ss.table, home, away, result["home_goals"], result["away_goals"])
+
+    # Suspensions: this match counts off bans being served, red cards from it add new ones
+    apply_suspensions_after_match(home, home_served, home_reds)
+    apply_suspensions_after_match(away, away_served, away_reds)
+    if ss.user_team in (home, away):
+        drop_sent_off_from_user_lineup(home_reds if home == ss.user_team else away_reds)
     
     home_cs = result["away_goals"] == 0
     away_cs = result["home_goals"] == 0
@@ -1600,12 +1886,15 @@ def play_fixture(home, away, rng):
             if player_name == "Select Player":
                 continue
             minutes = int(min(p["off_min"], 90) - p["on_min"])
+            sent_off = bool(p.get("sent_off", False))
             g_count = scorers.count(player_name)
             a_count = assisters.count(player_name)
             is_scorer = g_count > 0
             r = get_match_rating(xg, team_goals, cs, rng, is_scorer)
             if minutes < 90:   # short cameos stay closer to a neutral 6.0
                 r = round(6.0 + (r - 6.0) * (0.6 + 0.4 * minutes / 90), 1)
+            if sent_off:       # a red card costs the player a lot of rating
+                r = round(max(3.0, r - 1.5), 1)
             if a_count > 0:
                 r = round(min(10.0, r + 0.5 * a_count), 1)
 
@@ -1615,7 +1904,8 @@ def play_fixture(home, away, rng):
             stats.append({
                 "Player": player_name,
                 "Minutes Played": minutes,
-                "Sub": f"▲ {int(p['on_min'])}'" if p["on_min"] > 0 else (f"▼ {int(p['off_min'])}'" if p["off_min"] <= 90 else ""),
+                "Sub": (f"🟥 {int(p['off_min'])}'" if sent_off else
+                        f"▲ {int(p['on_min'])}'" if p["on_min"] > 0 else (f"▼ {int(p['off_min'])}'" if p["off_min"] <= 90 else "")),
                 "Goal": g_count,
                 "Assist": a_count,
                 "Rating": r
@@ -1639,6 +1929,7 @@ def play_fixture(home, away, rng):
             "home_team": home, "away_team": away,
             "home_formation": home_formation, "home_mentality": home_ment,
             "home_tempo": home_tempo, "home_line": home_line, "home_press": home_press, "home_pref": home_pref, "home_type": home_type,
+            "home_pass": home_pass, "home_stance": home_stance, "away_pass": away_pass, "away_stance": away_stance,
             "away_formation": away_formation, "away_mentality": away_ment,
             "away_tempo": away_tempo, "away_line": away_line, "away_press": away_press, "away_pref": away_pref, "away_type": away_type,
             "home_xi": home_xi[keep_cols].to_dict("records"),
@@ -1646,15 +1937,16 @@ def play_fixture(home, away, rng):
         }
 
     if ss.user_team in (home, away):
-        home_cards = pick_card_events(home_roster, result["stats_home"]["yellow_cards"], rng)
-        away_cards = pick_card_events(away_roster, result["stats_away"]["yellow_cards"], rng)
+        home_cards = pick_card_events(home_roster[~home_roster["sent_off"]], result["stats_home"]["yellow_cards"], rng)
+        away_cards = pick_card_events(away_roster[~away_roster["sent_off"]], result["stats_away"]["yellow_cards"], rng)
         def tactics_label(ptype, fit, pref):
             label = f"{ptype} · {round(fit * 100)}% fit"
             return label if pref == "Balanced" else f"{label} · {pref.replace('Focus on ', '')}"
         ss.last_match_report = build_match_report(
             home, away, ss.matchday + 1, result, home_events, away_events, home_cards, away_cards,
             home_subs, away_subs,
-            tactics_label(home_type, home_fit, home_pref), tactics_label(away_type, away_fit, away_pref)
+            tactics_label(home_type, home_fit, home_pref), tactics_label(away_type, away_fit, away_pref),
+            home_reds, away_reds
         )
 
     ss.history.append({
@@ -1665,8 +1957,12 @@ def play_fixture(home, away, rng):
     })
     return result, home_events, away_events
 
-def play_next_matchday():
+def play_next_matchday(auto_fix: bool = False):
     if ss.matchday >= len(ss.schedule): return None
+    if auto_fix and not is_team_locked():
+        # Simulating several matchdays in a row: the assistant manager replaces suspended / missing players
+        autofix_user_lineup()
+        ss.locked_signature = current_tactics_signature()
     rng = np.random.default_rng()
     round_fixtures = ss.schedule[ss.matchday]
     user_result = None
@@ -1684,10 +1980,17 @@ def play_next_matchday():
                  [(e["minute"], "away", e["scorer"], e["assist"]) for e in ae]
         events.sort(key=lambda x: x[0])
 
+        lines_by_minute = []
         for min_, side, scorer, assister in events:
             team_name = home if side == "home" else away
             assist_str = f" (Assist: {assister})" if assister else ""
-            lines.append(f"⚽ GOAL! {min_}' - {scorer} ({team_name}){assist_str}")
+            lines_by_minute.append((min_, f"⚽ GOAL! {min_}' - {scorer} ({team_name}){assist_str}"))
+        for e in (ss.last_match_report or {}).get("events", []):
+            if e["type"] == "red":
+                team_name = home if e["side"] == "home" else away
+                lines_by_minute.append((e["minute"], f"🟥 RED CARD! {e['minute']}' - {e['player']} ({team_name}) - {e['reason']}, "
+                                                      f"suspended for {e['ban']} match{'es' if e['ban'] > 1 else ''}"))
+        lines += [text for _, text in sorted(lines_by_minute, key=lambda t: t[0])]
         ss.last_commentary = lines
     else:
         ss.last_commentary = None
@@ -1695,7 +1998,7 @@ def play_next_matchday():
 
 def simulate_to_end():
     while ss.matchday < len(ss.schedule):
-        play_next_matchday()
+        play_next_matchday(auto_fix=True)
 
 # --------------------------------------------------------------------------
 # Sidebar
@@ -1983,6 +2286,188 @@ def build_radar_chart(p1_row: pd.Series, p2_row: pd.Series):
     )
     return fig
 
+# --------------------------------------------------------------------------
+# Scouting report on the next opponent
+# --------------------------------------------------------------------------
+def next_user_fixture():
+    """(home, away) of the user's next match, or None when the season is over."""
+    if not ss.get("season_started") or ss.matchday >= len(ss.schedule):
+        return None
+    for home, away in ss.schedule[ss.matchday]:
+        if ss.user_team in (home, away):
+            return home, away
+    return None
+
+def opponent_plan(team: str):
+    """What a club will do in the next match. It is exactly the plan play_fixture will use (same seed)."""
+    return ai_lineup_for(team, scout_rng(team, ss.matchday))
+
+def team_form(team: str, n: int = 5) -> list:
+    letters = []
+    for m in ss.history:
+        if team in (m["home"], m["away"]):
+            gf, ga = (m["hg"], m["ag"]) if m["home"] == team else (m["ag"], m["hg"])
+            letters.append("W" if gf > ga else "D" if gf == ga else "L")
+    return letters[-n:]
+
+def strength_profile(xi: pd.DataFrame, team: str):
+    """(index per line where 50 = league average and 10 = one standard deviation, raw lane ratings)."""
+    r = phase_ratings(xi, "Balanced", team_name=team)
+    idx = {k: 50 + 10 * (r[k] - PHASE_BASELINE[k][0]) / PHASE_BASELINE[k][1] for k in ("att", "mid", "def")}
+    return idx, r["lanes"]
+
+def scouting_tips(opp: str, plan: tuple, their_lanes: dict, their_idx: dict, my_lanes, my_xi, my_ready: bool) -> list:
+    xi, ment, tempo, line, press, formation, pref, ptype, passing, stance = plan
+    tips = []
+
+    if my_ready and my_lanes:
+        wing_edge = my_lanes["att_wide"] - their_lanes["def_wide"]
+        mid_edge = my_lanes["att_cent"] - their_lanes["def_cent"]
+        if wing_edge - mid_edge > 3:
+            tips.append("✅ Your Focus on Wing Play matches their weaker flanks." if ss.attack_pref == "Focus on Wing Play"
+                        else "🎯 Their flanks are weaker than their centre: **Focus on Wing Play** should pay off.")
+        elif mid_edge - wing_edge > 3:
+            tips.append("✅ Your Focus on Middle Play matches their weaker centre." if ss.attack_pref == "Focus on Middle Play"
+                        else "🎯 Their centre is easier to break than their flanks: **Focus on Middle Play** should pay off.")
+        their_wing = their_lanes["att_wide"] - my_lanes["def_wide"]
+        their_mid = their_lanes["att_cent"] - my_lanes["def_cent"]
+        if their_wing - their_mid > 3:
+            tips.append("⚠️ They are most dangerous down the flanks: **Force play through the middle** closes that route."
+                        if ss.def_stance != "Force play through the middle" else "✅ Your stance already closes their dangerous flank play.")
+        elif their_mid - their_wing > 3:
+            tips.append("⚠️ They are most dangerous through the middle: **Force play on the wing** pushes them out wide."
+                        if ss.def_stance != "Force play on the wing" else "✅ Your stance already pushes them away from their strong centre.")
+
+    # Type of Play counter, from the style-vs-style table
+    def matchup_net(mine: str) -> float:
+        return PLAY_TYPE_MATCHUP.get(mine, {}).get(ptype, 0.0) - PLAY_TYPE_MATCHUP.get(ptype, {}).get(mine, 0.0)
+    best = max(PLAY_TYPE_NAMES, key=matchup_net)
+    if best != ss.play_type and matchup_net(best) - matchup_net(ss.play_type) >= 0.06:
+        extra = ""
+        if my_ready:
+            f = play_type_squad_fit(best, my_xi, ss.user_team, ss.formation, ss.mentality, ss.tempo, ss.oop_line,
+                                    ss.pressing, ss.attack_pref, ss.passing_style, ss.def_stance)["fit"]
+            extra = f" (your squad fit with the current settings: {round(f * 100)}%)"
+        tips.append(f"🧠 They play {ptype}: **{best}** counters it well{extra}.")
+    elif ss.play_type != "Balanced" and matchup_net(ss.play_type) >= 0.06:
+        tips.append(f"✅ Your {ss.play_type} is well suited against their {ptype}.")
+
+    # Passing style vs their stance, and their passing vs your stance
+    def pass_gain(p: str) -> float:
+        return PASSING_MATCHUP.get(p, {}).get(stance, 0.0)
+    best_pass = max(PASSING_STYLES, key=pass_gain)
+    if best_pass != ss.passing_style and pass_gain(best_pass) - pass_gain(ss.passing_style) >= 0.04:
+        tips.append(f"📐 Against their {stance.lower()} stance, **{best_pass}** passing works better than {ss.passing_style.lower()}.")
+    def their_pass_gain(s: str) -> float:
+        return PASSING_MATCHUP.get(passing, {}).get(s, 0.0)
+    best_stance = min(DEFENSIVE_STANCES, key=their_pass_gain)
+    if best_stance != ss.def_stance and their_pass_gain(ss.def_stance) - their_pass_gain(best_stance) >= 0.04:
+        tips.append(f"🛡️ Their {passing.lower()} passing is least effective against **{best_stance}**.")
+
+    if stance == "Man to man all pitch":
+        tips.append("🟨 They mark man to man all over the pitch: expect fouls and cards, and a tired team late on, so a good bench helps.")
+    if ptype == "Gegenpress":
+        tips.append("⏱️ Gegenpress is exhausting: they tend to fade late in the game.")
+
+    weakest = min(their_idx, key=their_idx.get)
+    names = {"att": "attack", "mid": "midfield", "def": "defence"}
+    tips.append(f"🔍 Their weakest area is their {names[weakest]} (index {their_idx[weakest]:.0f}, where 50 is the league average).")
+
+    missing = suspended_for(opp)
+    if missing:
+        tips.append("🟥 Missing through suspension: " + ", ".join(f"{p} ({n} match{'es' if n > 1 else ''} left)" for p, n in missing.items()) + ".")
+    return tips
+
+def render_scouting_report(expanded: bool = True):
+    fx = next_user_fixture()
+    if not fx:
+        return
+    home, away = fx
+    opp = away if home == ss.user_team else home
+    venue = "at home" if home == ss.user_team else "away"
+    plan = opponent_plan(opp)
+    xi, ment, tempo, line, press, formation, pref, ptype, passing, stance = plan
+    their_fit = play_type_squad_fit(ptype, xi, opp, formation, ment, tempo, line, press, pref, passing, stance)["fit"]
+    their_idx, their_lanes = strength_profile(xi, opp)
+
+    my_xi = current_user_xi()
+    my_ready = (my_xi["Player"] != "Select Player").sum() >= 11
+    my_idx, my_lanes, my_fit = None, None, None
+    if my_ready:
+        my_idx, my_lanes = strength_profile(my_xi, ss.user_team)
+        my_fit = play_type_squad_fit(ss.play_type, my_xi, ss.user_team, ss.formation, ss.mentality, ss.tempo, ss.oop_line,
+                                     ss.pressing, ss.attack_pref, ss.passing_style, ss.def_stance)["fit"]
+
+    standings = table_dataframe(ss.table)
+    row = standings[standings["Team"] == opp].iloc[0]
+    position = int(standings.index[standings["Team"] == opp][0])
+
+    with st.expander(f"🔍 Scouting report: {opp} ({venue})", expanded=expanded):
+        c1, c2, c3 = st.columns(3)
+        c1.metric("League position", f"{position}º")
+        c1.caption(f"{int(row['Pts'])} pts · {int(row['W'])}W {int(row['D'])}D {int(row['L'])}L")
+        form = team_form(opp)
+        c2.metric("Recent form", " ".join({"W": "🟩", "D": "🟨", "L": "🟥"}[x] for x in form) if form else "—")
+        c2.caption("Last 5 matches (oldest first)" if form else "No matches played yet")
+        played = max(int(row["P"]), 1)
+        c3.metric("Goals per game", f"{row['GF'] / played:.1f} for · {row['GA'] / played:.1f} against")
+        meetings = [m for m in ss.history if {m["home"], m["away"]} == {ss.user_team, opp}]
+        c3.caption("Earlier this season: " + " · ".join(f"{m['home']} {m['hg']}-{m['ag']} {m['away']}" for m in meetings)
+                   if meetings else "No earlier meeting this season")
+
+        left, right = st.columns(2)
+        with left:
+            st.markdown("**Expected setup**")
+            rows = [
+                ("Formation", formation, ss.formation),
+                ("Type of Play", f"{ptype} ({round(their_fit * 100)}% fit)",
+                 f"{ss.play_type} ({round(my_fit * 100)}% fit)" if my_fit is not None else ss.play_type),
+                ("Mentality", ment, ss.mentality),
+                ("Tempo", tempo, ss.tempo),
+                ("Passing style", passing, ss.passing_style),
+                ("Defensive line", line, ss.oop_line),
+                ("Defensive stance", stance, ss.def_stance),
+                ("Pressing", press, ss.pressing),
+                ("Attacking preference", pref, ss.attack_pref),
+            ]
+            st.dataframe(pd.DataFrame(rows, columns=["", opp, ss.user_team]), hide_index=True, use_container_width=True)
+        with right:
+            st.markdown("**Strengths** (index: 50 = league average)")
+            names = {"att": "Attack", "mid": "Midfield", "def": "Defence"}
+            srows = []
+            for k in ("att", "mid", "def"):
+                mine = f"{my_idx[k]:.0f}" if my_idx else "—"
+                edge = "" if not my_idx else ("▲ you" if my_idx[k] - their_idx[k] >= 1.5 else "▼ them" if their_idx[k] - my_idx[k] >= 1.5 else "even")
+                srows.append((names[k], f"{their_idx[k]:.0f}", mine, edge))
+            for label, key in (("Flank attack", "att_wide"), ("Central attack", "att_cent"), ("Flank defence", "def_wide"), ("Central defence", "def_cent")):
+                mine = f"{my_lanes[key]:.0f}" if my_lanes else "—"
+                edge = "" if not my_lanes else ("▲ you" if my_lanes[key] - their_lanes[key] >= 2 else "▼ them" if their_lanes[key] - my_lanes[key] >= 2 else "even")
+                srows.append((label, f"{their_lanes[key]:.0f}", mine, edge))
+            st.dataframe(pd.DataFrame(srows, columns=["", opp, ss.user_team, "Edge"]), hide_index=True, use_container_width=True)
+            if not my_ready:
+                st.caption("Pick your full XI to compare the strengths with yours.")
+
+        st.markdown("**Tactical tips**")
+        for tip in scouting_tips(opp, plan, their_lanes, their_idx, my_lanes, my_xi, my_ready):
+            st.markdown(f"- {tip}")
+
+        st.markdown("**Expected XI**")
+        players = season_player_table()
+        club = players[players["Team"] == opp].set_index("Player") if not players.empty else pd.DataFrame()
+        xrows = []
+        for _, r in xi.iterrows():
+            p = club.loc[r["Player"]] if len(club) and r["Player"] in club.index else None
+            xrows.append({"Pos": r["Label"], "Player": r["Player"], "OVR": round(float(r["OVR"]), 1),
+                          "Apps": int(p["Apps"]) if p is not None else 0, "Goals": int(p["Goals"]) if p is not None else 0,
+                          "Assists": int(p["Assists"]) if p is not None else 0,
+                          "Avg rating": float(p["Rating"]) if p is not None else None})
+        st.dataframe(pd.DataFrame(xrows), hide_index=True, use_container_width=True)
+        threats = sorted(xrows, key=lambda x: (x["Goals"] + x["Assists"], x["OVR"]), reverse=True)[:2]
+        star = max(xrows, key=lambda x: x["OVR"])
+        st.caption(f"Key players: {star['Player']} (best rated in their XI, OVR {star['OVR']:.0f})"
+                   + "".join(f" · {t['Player']} ({t['Goals']} goals, {t['Assists']} assists)" for t in threats if t["Goals"] + t["Assists"] > 0))
+        st.caption("This is the plan their manager has picked for this match.")
+
 def render_squad_tactics():
     if not ss.season_started:
         render_need_season_prompt()
@@ -1996,9 +2481,17 @@ def render_squad_tactics():
         st.caption(f"📊 **Expected Finish:** #{info['exp_rank']} | **Strength Modifier:** {info['modifier']}x ({mod_pct} Rating Factor)")
         
     squad = get_user_squad()
+    pool_squad = available_squad()          # suspended players cannot be picked
 
     # Pre-populate empty manual lineup dict if missing or formation changed
     sync_manual_lineup()
+
+    suspended = suspended_for(ss.user_team)
+    if suspended:
+        st.error("🟥 **Suspended for the next game:** " + " · ".join(
+            f"{p} ({n} match{'es' if n > 1 else ''} left)" for p, n in suspended.items()))
+
+    render_scouting_report(expanded=False)
 
     st.markdown("##### 👥 Full Squad Attributes")
     filtered_squad = squad.copy()
@@ -2010,6 +2503,9 @@ def render_squad_tactics():
         columns=["PlayerID", "Team", "OVR", "Season", "League", "season", "league"], 
         errors="ignore"
     )
+    if suspended:
+        squad_display.insert(1, "Status", filtered_squad["Player"].map(
+            lambda p: f"🟥 Suspended ({suspended[p]})" if p in suspended else ""))
     st.dataframe(style_player_attributes(squad_display), use_container_width=True, hide_index=True)
 
     st.divider()
@@ -2071,7 +2567,17 @@ def render_squad_tactics():
 
         tactic_select("Mentality", MENTALITIES, "mentality")
         tactic_select("Tempo", TEMPOS, "tempo")
+        tactic_select("Passing Style", PASSING_STYLES, "passing_style",
+                      help="Short: keep the ball with quick passes (more possession). Balanced: a mix. Direct: long balls "
+                           "to the forwards (less possession). Each suits different players, and meets the opponent's "
+                           "defensive stance differently: short passing struggles against man-to-man and a compact "
+                           "block, direct passing beats man-to-man.")
         tactic_select("Defensive Line", OOP_LINES, "oop_line")
+        tactic_select("Defensive Stance", DEFENSIVE_STANCES, "def_stance",
+                      help="Force play on the wing: close the middle and invite the opponent wide. Compact: the standard, "
+                           "organised shape. Force play through the middle: close the flanks. Man to man all pitch: "
+                           "mark a man everywhere, strong against short passing but tiring, card-prone and exposed to "
+                           "direct balls. Forcing play works when the lane you push them into is their weaker one.")
         tactic_select("Pressing Type", PRESS_TYPES, "pressing")
         if "attack_pref_choice" not in ss:
             ss["attack_pref_choice"] = ss.attack_pref
@@ -2117,7 +2623,7 @@ def render_squad_tactics():
             current_val = ss.manual_lineup.get(key, "Select Player")
             
             # Natural position candidates
-            pos_players = squad[squad["Position"] == pos]["Player"].tolist()
+            pos_players = pool_squad[pool_squad["Position"] == pos]["Player"].tolist()
             
             # Find players already assigned to OTHER slots
             other_selected = {p for k, p in ss.manual_lineup.items() if k != key and p and p != "Select Player"}
@@ -2165,12 +2671,14 @@ def render_squad_tactics():
 
         st.markdown("##### 🪑 Substitutes")
         starters_now = {p for p in ss.manual_lineup.values() if p and p != "Select Player"}
-        bench_pool = squad[~squad["Player"].isin(starters_now)].copy()
+        bench_pool = pool_squad[~pool_squad["Player"].isin(starters_now)].copy()
         bench_pool["_g"] = bench_pool["Position"].map(lambda p: POSITION_ORDER.index(p) if p in POSITION_ORDER else 99)
         bench_pool = bench_pool.sort_values(["_g", "OVR"], ascending=[True, False])
         bench_info = {r["Player"]: f'{r["Player"]} · {r["Position"]} · {r["OVR"]:.0f}' for _, r in bench_pool.iterrows()}
         # keep the widget's own state valid (a player promoted into the XI must leave the bench)
-        ss["bench_select"] = [p for p in ss.get("bench_select", []) if p in bench_info][:BENCH_SIZE]
+        if "bench_select" not in ss:
+            ss["bench_select"] = list(ss.bench)
+        ss["bench_select"] = [p for p in ss["bench_select"] if p in bench_info][:BENCH_SIZE]
         ss.bench = st.multiselect(
             f"Bench (up to {BENCH_SIZE})", list(bench_info), key="bench_select", max_selections=BENCH_SIZE,
             format_func=lambda p: bench_info.get(p, p),
@@ -2188,7 +2696,8 @@ def render_squad_tactics():
         fit_info = None
         if (current_xi_df["Player"] != "Select Player").sum() >= 11:
             fit_info = play_type_squad_fit(ss.play_type, current_xi_df, ss.user_team, ss.formation, ss.mentality,
-                                           ss.tempo, ss.oop_line, ss.pressing, ss.attack_pref)
+                                           ss.tempo, ss.oop_line, ss.pressing, ss.attack_pref,
+                                           ss.passing_style, ss.def_stance)
         st.markdown(squad_fit_header_html(ss.formation, ss.play_type, fit_info), unsafe_allow_html=True)
         avg_ratings = {k: ss.player_ratings_sum[k]/ss.player_ratings_count[k] for k in ss.player_ratings_sum if ss.player_ratings_count.get(k, 0) > 0}
         st.markdown(generate_pitch_html(current_xi_df, avg_ratings, ss.formation), unsafe_allow_html=True)
@@ -2279,8 +2788,18 @@ def render_play():
 
     st.markdown(f"**Matchday {ss.matchday + 1} of {len(ss.schedule)}**")
 
+    suspended = suspended_for(ss.user_team)
+    if suspended:
+        st.error("🟥 **Suspended for the next game:** " + " · ".join(
+            f"{p} ({n} match{'es' if n > 1 else ''} left)" for p, n in suspended.items()))
+
+    render_scouting_report(expanded=True)
+
     if not is_team_locked():
         st.warning("🔒 Lock your team in **Squad & Tactics** before you can play or simulate a matchday.")
+        if suspended and any(v == "Select Player" or v in suspended for v in ss.manual_lineup.values()):
+            st.button("⚡ Let my assistant replace the suspended players and lock the team", use_container_width=True,
+                      on_click=assistant_fix_and_lock)
         if st.button("Go to Squad & Tactics", type="primary", use_container_width=True):
             ss.page = "squad"
             st.rerun()
@@ -2295,6 +2814,11 @@ def render_play():
         if st.button("⏩ Simulate Rest of Season", use_container_width=True):
             simulate_to_end()
             st.rerun()
+
+    if ss.get("assistant_notes"):
+        with st.expander(f"🧢 Assistant manager changes ({len(ss.assistant_notes)})"):
+            for note in ss.assistant_notes:
+                st.markdown(f"- {note}")
 
     if ss.last_commentary:
         st.divider()
