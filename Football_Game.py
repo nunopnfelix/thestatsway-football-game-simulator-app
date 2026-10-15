@@ -3294,14 +3294,19 @@ def _ordinal(n: int) -> str:
 
 def _card_font(size: int, bold: bool = False):
     from PIL import ImageFont
-    names = (["DejaVuSans-Bold.ttf", "Arial Bold.ttf", "arialbd.ttf", "Helvetica-Bold.ttf"] if bold
-             else ["DejaVuSans.ttf", "Arial.ttf", "arial.ttf", "Helvetica.ttf"])
+    # Try system fonts that support full extended Latin characters (á, ó, ã, ç, etc.)
+    names = (
+        ["DejaVuSans-Bold.ttf", "arialbd.ttf", "Arial Bold.ttf", "Helvetica-Bold.ttf", "FreeSans-Bold.ttf"]
+        if bold else
+        ["DejaVuSans.ttf", "arial.ttf", "Arial.ttf", "Helvetica.ttf", "FreeSans.ttf"]
+    )
     for n in names:
         try:
             return ImageFont.truetype(n, size)
         except Exception:
             continue
     try:
+        # Fallback to Pillow's default truetype if available
         return ImageFont.load_default(size)
     except Exception:
         return ImageFont.load_default()
@@ -3357,6 +3362,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
     squad_pos = DF[DF["Team"] == team].set_index("Player")["Position"]
     covered = (ss.get("cover") or {}).get("slots", {})
     rows = []
+   
     for (grp, label), name in ss.manual_lineup.items():
         if name == "Select Player":
             name = covered.get((grp, label), name)
@@ -3380,6 +3386,20 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
             "Slot": grp, "Label": label, "Player": name, "Team": team, 
             "Position": squad_pos[name], "Rating": rating
         })
+
+    def _clean_text(val: str) -> str:
+        if not isinstance(val, str):
+            return str(val)
+        # Fix broken latin-1 / utf-8 encoding if present
+        try:
+            val = val.encode("latin-1").decode("utf-8")
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            pass
+        # If font glyphs still fail on certain characters, convert/strip accents cleanly
+        import unicodedata
+        # Normalize unicode to avoid split accents
+        return unicodedata.normalize("NFC", val)
+    
     my_xi = pd.DataFrame(rows, columns=["Slot", "Label", "Player", "Team", "Position", "Rating"])
     W, H = 1500, 960
     bg, card, pink, muted = (11, 11, 20), (18, 18, 31), (255, 47, 123), (150, 150, 175)
