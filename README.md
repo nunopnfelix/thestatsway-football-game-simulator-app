@@ -3,8 +3,10 @@
 Liga Portugal Manager is a Football-Manager-style simulation game built using Streamlit, focused entirely on the 2026/27 Liga Portugal season. 
 Use tactical depth, clever match preparation, and in-game management.   
  <br>
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://thestatsway-football-game-simulator-app.streamlit.app/)
+ <br>
  
-## 📋 Key Features & Description. 
+## 📋 Key Features & Description
 
 # 1. Career Setup & Squad Management (Squad & Tactics)
 
