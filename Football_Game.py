@@ -1,6 +1,7 @@
 # streamlit run FMtypegame.py
 import base64
 import html as html_lib
+import hashlib
 import io
 import json
 import random
@@ -8,8 +9,14 @@ import re
 import numpy as np
 import pandas as pd
 import streamlit as st
+from pathlib import Path
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
+
+try:  # small DataFrames are much faster with plain Python strings than with pyarrow-backed ones
+    pd.options.mode.string_storage = "python"
+except Exception:
+    pass
 
 st.set_page_config(page_title="Liga Portugal Manager", page_icon="⚽", layout="wide")
 
@@ -294,35 +301,54 @@ def load_data() -> pd.DataFrame:
     df["PlayerID"] = df["Team"] + " | " + df["Player"]
     return df
 
-@st.cache_data
-def load_predictions_data() -> pd.DataFrame:
+PREDICTIONS_FILENAME = "predicted_final_league_position.xlsx"
+
+def find_predictions_file():
+    """(path or None, folders searched). Looks in the folder Streamlit was started from and next to the game,
+    first for the exact file name, then for a similarly named sheet (browsers add ' (1)' to repeated downloads)."""
+    folders = []
+    for d in (Path.cwd(), Path(__file__).resolve().parent):
+        if d not in folders:
+            folders.append(d)
+    for d in folders:
+        if (d / PREDICTIONS_FILENAME).is_file():
+            return d / PREDICTIONS_FILENAME, folders
+    candidates = []
+    for d in folders:
+        try:
+            for p in d.iterdir():
+                n = p.name.lower()
+                if (p.is_file() and not n.startswith("~$") and p.suffix.lower() in (".xlsx", ".xls", ".csv")
+                        and "predicted" in n and any(w in n for w in ("position", "league", "final"))):
+                    candidates.append(p)
+        except OSError:
+            pass
+    return (max(candidates, key=lambda p: p.stat().st_mtime) if candidates else None), folders
+
+@st.cache_data(show_spinner=False)
+def _read_predictions_file(path: str, modified: float) -> pd.DataFrame:
+    """Only successful reads are cached (an exception is never cached), and a changed file is read again."""
+    return pd.read_csv(path) if path.lower().endswith(".csv") else pd.read_excel(path)
+
+def load_predictions():
+    """(DataFrame, info). Never raises; `info` says where it looked and, if it failed, why."""
+    path, folders = find_predictions_file()
+    info = {"path": str(path) if path else None, "searched": [str(f) for f in folders], "error": None}
+    if path is None:
+        info["error"] = f"no file called {PREDICTIONS_FILENAME} was found"
+        return pd.DataFrame(), info
     try:
-        return pd.read_excel("predicted_final_league_position.xlsx")
-    except Exception:
-        return pd.DataFrame()
+        return _read_predictions_file(str(path), path.stat().st_mtime), info
+    except ImportError as e:
+        info["error"] = f"{e}. The Excel reader is missing: run  pip install openpyxl"
+    except PermissionError:
+        info["error"] = "the file is locked or not readable: close it in Excel and reload the page"
+    except Exception as e:
+        info["error"] = f"{type(e).__name__}: {e}"
+    return pd.DataFrame(), info
 
-@st.cache_data
-def get_team_strength_modifiers(df: pd.DataFrame) -> dict:
-    modifiers = {}
-    if df.empty: return modifiers
-    pos_cols = [c for c in df.columns if str(c).isdigit()]
-    positions = np.array([int(c) for c in pos_cols])
-    
-    for idx, row in df.iterrows():
-        team = str(row['Team']).strip()
-        probs = row[pos_cols].values.astype(float) / 100.0
-        # Expected Rank E[Rank] = Sum(Position * Probability)
-        exp_rank = np.sum(positions * probs)
-        # Center baseline around 9.5 (average rank in an 18-team league)
-        multiplier = 1.0 + (9.5 - exp_rank) * 0.015
-        modifiers[team] = {
-            "exp_rank": round(exp_rank, 2),
-            "modifier": round(multiplier, 3)
-        }
-    return modifiers
-
-PREDICTIONS_DF = load_predictions_data()
-TEAM_STRENGTH_DATA = get_team_strength_modifiers(PREDICTIONS_DF)
+PREDICTIONS_DF, PREDICTIONS_INFO = load_predictions()
+TEAM_STRENGTH_DATA = {}      # filled once the squads are loaded (it needs the club names of DATA.csv): see STRENGTH_PRIOR below
 
 # --------------------------------------------------------------------------
 # 2. Rating model & Tactics
@@ -564,9 +590,6 @@ def lane_ratings(xi: pd.DataFrame, team_name: str = None) -> dict:
             num += ovr * w
             den += w
         out[key] = num / den if den else 45.0
-    if team_name and team_name in TEAM_STRENGTH_DATA:
-        mod = TEAM_STRENGTH_DATA[team_name]["modifier"]
-        out = {k: v * mod for k, v in out.items()}
     return out
 
 def style_matchup_bonus(own: dict, opp: dict, style: str) -> float:
@@ -598,13 +621,7 @@ def phase_ratings(xi: pd.DataFrame, mentality: str = "Balanced", team_name: str 
     m = bucket({"MF": 1.0, "AM & W": 0.4, "FB & WB": 0.25, "CB": 0.1, "CF": 0.1}, "mid")
     a = bucket({"CF": 1.0, "AM & W": 0.9, "MF": 0.25, "FB & WB": 0.1}, "att")
     
-    # Apply Pre-season Matrix Strength Modifier
-    if team_name and team_name in TEAM_STRENGTH_DATA:
-        mod = TEAM_STRENGTH_DATA[team_name]["modifier"]
-        d *= mod
-        m *= mod
-        a *= mod
-
+    # (the pre-season strength of the club enters later, as a z-score: see team_phase_z)
     att_mod, def_mod = MENTALITY_MOD[mentality]
     return {"def": d * (1 + def_mod), "mid": m, "att": a * (1 + att_mod),
             "lanes": lane_ratings(xi, team_name)}
@@ -715,14 +732,39 @@ def _play_type_raw(play_type: str, xi: pd.DataFrame, attrs: pd.DataFrame):
         wsum += comp_w
     return total / wsum if wsum else None
 
-@st.cache_data(show_spinner=False)
+_STYLE_SCORES = {}  # (team, style) -> per-component {player: weighted attribute score}
+
+def _style_scores(team: str, play_type: str):
+    """For each component of a style's profile, every player's weighted attribute score (computed once per club)."""
+    key = (team, play_type)
+    tab = _STYLE_SCORES.get(key)
+    if tab is None:
+        squad = DF[DF["Team"] == team].set_index("Player")
+        names = squad.index.tolist()
+        half = RAW_ATTR_MAX / 2
+        tab = []
+        for groups, attr_w, comp_w in ALL_PROFILES[play_type]:
+            score = np.zeros(len(names))
+            for attr, w in attr_w.items():
+                score += w * (squad[attr].to_numpy(dtype=float) if attr in squad.columns else np.full(len(names), half))
+            tab.append((frozenset(groups), comp_w, dict(zip(names, score.tolist()))))
+        _STYLE_SCORES[key] = tab
+    return tab
+
 def _cached_play_type_raw(team: str, assignment: tuple, play_type: str):
-    """_play_type_raw for a club's XI, cached by (club, who plays where, style) so season sims stay fast."""
-    xi = pd.DataFrame(list(assignment), columns=["Slot", "Player"])
-    return _play_type_raw(play_type, xi, DF[DF["Team"] == team].set_index("Player"))
+    """Same value as _play_type_raw for a club's XI (assignment = ((slot, player), ...)), from precomputed scores."""
+    if not ALL_PROFILES.get(play_type):
+        return None
+    total, wsum = 0.0, 0.0
+    for groups, comp_w, scores in _style_scores(team, play_type):
+        vals = [scores[p] for s, p in assignment if s in groups and p in scores]
+        if vals:
+            total += comp_w * float(np.mean(vals))
+            wsum += comp_w
+    return total / wsum if wsum else None
 
 @st.cache_data
-def compute_play_type_baseline(_df: pd.DataFrame) -> dict:
+def compute_play_type_baseline(data_key: str, _df: pd.DataFrame) -> dict:
     """Mean / std of each style's requirement score across every club's best XI: the yardstick for 'fit'."""
     raws = {t: [] for t in ALL_PROFILES}
     for _, squad in _df.groupby("Team"):
@@ -993,7 +1035,7 @@ def get_match_rating(base_xg, goals, is_cs, rng, is_scorer):
 # Expected goals are built in log space and measured in standard deviations of the league's own spread of
 # attack / midfield / defence ratings, so results stay realistic whatever scale the player data uses, and no
 # stack of tactical effects can push the chances to zero (or to absurd levels).
-XG_BASE = 1.17                                  # xG of an average side against an average side
+XG_BASE = 1.24                                  # xG of an average side against an average side
 XG_ATT_SLOPE, XG_MID_SLOPE = 0.20, 0.07         # log-xG per standard deviation of attack-vs-defence / midfield gap
 XG_HOME_LOG_PER_ADV = 0.50                      # home_adv (in xG) -> log-xG, +for the home side and - for the away side
 MENTALITY_LOG_SCALE = 0.9                       # MENTALITY_MOD (rating %) -> log-xG
@@ -1005,17 +1047,160 @@ LINE_ATT_MOD = {"High line": 0.05, "Medium-block": 0.0, "Low defensive line": -0
 LINE_DEF_MOD = {"High line": -0.05, "Medium-block": 0.0, "Low defensive line": 0.05}
 
 @st.cache_data
-def compute_phase_baseline(_df: pd.DataFrame) -> dict:
-    """Mean / std of attack, midfield and defence ratings across every club's best XI (with the pre-season
-    strength modifier): the yardstick that turns a rating gap into scoring chances."""
+def compute_phase_baseline(data_key: str, _df: pd.DataFrame) -> dict:
+    """Yardstick that turns a rating gap into scoring chances: mean / spread of attack, midfield and defence ratings
+    across every club's best XI, plus each club's own 'level' (its average z-score) with that best XI.
+    The spread is kept within 3.5-7 rating points so the effect of one player never depends on how
+    similar or different the clubs of the data set happen to be."""
     vals = {"att": [], "mid": [], "def": []}
+    per_team = {}
     for team, squad in _df.groupby("Team"):
         xi = auto_select_xi(squad, "4-3-3")
         xi["Role"] = xi["Slot"].apply(default_role_for)
-        r = phase_ratings(xi, "Balanced", team_name=team)
+        r = phase_ratings(xi, "Balanced")
+        per_team[team] = r
         for k in vals:
             vals[k].append(r[k])
-    return {k: (float(np.mean(v)), max(float(np.std(v)), 1.0)) for k, v in vals.items()}
+    phase = {k: (float(np.mean(v)), float(np.clip(np.std(v), 3.5, 7.0))) for k, v in vals.items()}
+    teams = {t: {"level": float(np.mean([(r[k] - phase[k][0]) / phase[k][1] for k in phase]))} for t, r in per_team.items()}
+    return {"phase": phase, "teams": teams}
+
+# ---- Pre-season predictions: the finishing-position probabilities set each club's strength ----------
+import difflib
+import unicodedata
+
+_NAME_STOP = {"fc", "sc", "cf", "ac", "cd", "ud", "gd", "sad", "sd", "cp", "de", "da", "do", "dos", "das", "clube", "futebol", "club", "f", "c"}
+_NAME_ALIASES = {
+    "sporting": ["sporting cp", "sporting lisbon", "sporting lisboa", "sporting clube de portugal"],
+    "sporting braga": ["braga", "sc braga", "sporting de braga", "sp braga"],
+    "benfica": ["sl benfica", "benfica lisbon"],
+    "porto": ["fc porto"],
+    "vitoria guimaraes": ["vitoria sc", "vitoria", "guimaraes", "v guimaraes", "vitoria de guimaraes", "vitoria sc guimaraes"],
+    "estrela": ["estrela amadora", "cf estrela da amadora"],
+    "academico": ["academico viseu", "academico de viseu"],
+    "casa pia": ["casa pia ac"],
+    "maritimo": ["cs maritimo"],
+    "nacional": ["cd nacional", "nacional madeira"],
+    "estoril": ["estoril praia", "gd estoril praia"],
+}
+
+def _name_tokens(name) -> list:
+    s = unicodedata.normalize("NFKD", str(name)).encode("ascii", "ignore").decode().lower()
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    return [t for t in s.split() if t not in _NAME_STOP]
+
+def _canon(name) -> str:
+    return " ".join(_name_tokens(name))
+
+def _name_score(pred_name: str, data_name: str) -> float:
+    """How likely two club names are the same club (0-1)."""
+    a, b = _canon(pred_name), _canon(data_name)
+    if not a or not b:
+        return 0.0
+    if a == b:
+        return 1.0
+    aliases = {_canon(x) for x in _NAME_ALIASES.get(a, [])} | {a}
+    aliases_b = {_canon(x) for x in _NAME_ALIASES.get(b, [])} | {b}
+    if b in aliases or a in aliases_b or (aliases & aliases_b):
+        return 0.97
+    ta, tb = set(a.split()), set(b.split())
+    if ta <= tb or tb <= ta:
+        return 0.5 + 0.4 * len(ta & tb) / max(len(ta), len(tb))
+    return 0.9 * difflib.SequenceMatcher(None, a, b).ratio() if difflib.SequenceMatcher(None, a, b).ratio() >= 0.8 else 0.0
+
+def match_team_names(pred_names: list, data_teams: list, threshold: float = 0.55) -> dict:
+    """One-to-one {prediction name: club name in DATA.csv}, best matches first."""
+    scored = sorted(((_name_score(p, d), p, d) for p in pred_names for d in data_teams), reverse=True)
+    mapping, used = {}, set()
+    for score, p, d in scored:
+        if score < threshold:
+            break
+        if p not in mapping and d not in used:
+            mapping[p] = d
+            used.add(d)
+    return mapping
+
+def read_prediction_matrix(df: pd.DataFrame):
+    """(club names, finishing positions, probability matrix with rows summing to 1) from the predictions sheet.
+    The club column is whichever column is not a position number (e.g. 'Team' or 'Team/Position')."""
+    pos_cols = [c for c in df.columns if str(c).strip().isdigit()]
+    name_cols = [c for c in df.columns if c not in pos_cols]
+    if not pos_cols or not name_cols:
+        raise ValueError("predictions sheet needs a club column and one column per finishing position")
+    P = df[pos_cols].apply(pd.to_numeric, errors="coerce").fillna(0.0).to_numpy(float)
+    P = P / np.where(P.sum(axis=1, keepdims=True) > 0, P.sum(axis=1, keepdims=True), 1.0)
+    return (list(df[name_cols[0]].astype(str).str.strip()), np.array([int(str(c).strip()) for c in pos_cols]), P)
+
+def _simulate_league_positions(theta: np.ndarray, rng, k: float, base: float, home: float):
+    """S simulated seasons of a double round-robin with Poisson goals. theta: (S, n) strengths in z units.
+    Uses the same goal model as the match engine (log-xG linear in the strength gap). Returns positions (S, n)."""
+    S, n = theta.shape
+    d = theta[:, :, None] - theta[:, None, :]
+    gh = rng.poisson(base * np.exp(home + k * d))
+    ga = rng.poisson(base * np.exp(-home - k * d))
+    mask = ~np.eye(n, dtype=bool)[None]
+    pts = ((3 * (gh > ga) + (gh == ga)) * mask).sum(2) + ((3 * (ga > gh) + (gh == ga)) * mask).sum(1)
+    gf = (gh * mask).sum(2) + (ga * mask).sum(1)
+    gc = (ga * mask).sum(2) + (gh * mask).sum(1)
+    key = pts * 1e4 + (gf - gc) * 10 + gf + rng.random((S, n)) * 0.5
+    order = np.argsort(-key, axis=1)
+    pos = np.empty_like(order)
+    np.put_along_axis(pos, order, np.tile(np.arange(1, n + 1), (S, 1)), axis=1)
+    return pos
+
+def fit_strengths_to_matrix(P: np.ndarray, positions: np.ndarray, k: float, base: float, home: float,
+                            iters: int = 40, seasons: int = 500, seed: int = 1):
+    """One strength (z units) per club such that simulated leagues finish like the predicted probabilities.
+    Returns (theta, mean absolute error of the finishing matrix in percentage points)."""
+    n = P.shape[0]
+    target = P @ positions
+    theta = (9.5 - target) / max(float(np.std(target)), 1e-6) * 0.8
+    for it in range(iters):
+        rng = np.random.default_rng(seed)
+        pos = _simulate_league_positions(np.tile(theta, (seasons, 1)), rng, k, base, home)
+        theta = theta + 0.15 * (pos.mean(0) - target) / (1 + it / 15)      # finishing too low -> stronger
+    theta = theta - theta.mean()
+    rng = np.random.default_rng(seed + 99)
+    pos = _simulate_league_positions(np.tile(theta, (2000, 1)), rng, k, base, home)
+    M = np.stack([np.bincount(pos[:, t] - 1, minlength=n) / len(pos) for t in range(n)])
+    return theta, float(np.abs(M - P).mean() * 100)
+
+@st.cache_data
+def compute_strength_priors(pred_key: str, data_teams: tuple, _pred_df: pd.DataFrame) -> dict:
+    """Strength of every club from the pre-season finishing probabilities (full matrix, not just the average rank).
+    `pred_key` is a fingerprint of the sheet, so the result is recomputed whenever the predictions change."""
+    out = {"teams": {}, "unmatched_pred": [], "unmatched_data": list(data_teams), "fit_error_pp": None, "mapping": {},
+           "error": None}
+    if _pred_df is None or _pred_df.empty:
+        return out
+    try:
+        names, positions, P = read_prediction_matrix(_pred_df)
+    except Exception as e:
+        out["error"] = str(e)
+        return out
+    theta, err = fit_strengths_to_matrix(P, positions, XG_ATT_SLOPE + XG_MID_SLOPE, XG_BASE, XG_HOME_LOG_PER_ADV * 0.28)
+    exp_rank = P @ positions
+    mapping = match_team_names(names, list(data_teams))
+    for i, name in enumerate(names):
+        if name in mapping:
+            out["teams"][mapping[name]] = {"exp_rank": round(float(exp_rank[i]), 2), "z": round(float(theta[i]), 3),
+                                          "from": name}
+    out["mapping"] = mapping
+    out["unmatched_pred"] = [n for n in names if n not in mapping]
+    out["unmatched_data"] = [t for t in data_teams if t not in mapping.values()]
+    for t in out["unmatched_data"]:               # a club without a prediction plays at the league-average strength
+        out["teams"][t] = {"exp_rank": round((len(names) + 1) / 2, 2), "z": 0.0, "from": None}
+    out["fit_error_pp"] = round(err, 2)
+    return out
+
+def team_phase_z(r: dict, team) -> dict:
+    """z-scores of a side's attack / midfield / defence. The pre-season prediction sets the club's overall level;
+    the XI on the pitch sets the profile (e.g. strong attack, weak defence) and any change from the club's best XI."""
+    z = {k: (r[k] - PHASE_BASELINE[k][0]) / PHASE_BASELINE[k][1] for k in ("att", "mid", "def")}
+    prior, base = TEAM_STRENGTH_DATA.get(team), TEAM_BASELINE.get(team)
+    if not prior or not base:
+        return z
+    return {k: prior["z"] + (v - base["level"]) for k, v in z.items()}
 
 def simulate_match(home_xi, away_xi, 
                    home_mentality="Balanced", away_mentality="Balanced",
@@ -1031,10 +1216,9 @@ def simulate_match(home_xi, away_xi,
     rng = rng or np.random.default_rng()
     
     # Ratings without mentality; mentality and the defensive line enter as bounded log-xG terms below
-    h = phase_ratings(home_xi, "Balanced", team_name=home_team)
-    a = phase_ratings(away_xi, "Balanced", team_name=away_team)
-    zh = {k: (h[k] - PHASE_BASELINE[k][0]) / PHASE_BASELINE[k][1] for k in ("att", "mid", "def")}
-    za = {k: (a[k] - PHASE_BASELINE[k][0]) / PHASE_BASELINE[k][1] for k in ("att", "mid", "def")}
+    h = phase_ratings(home_xi, "Balanced")
+    a = phase_ratings(away_xi, "Balanced")
+    zh, za = team_phase_z(h, home_team), team_phase_z(a, away_team)
 
     style_home = style_matchup_bonus(h["lanes"], a["lanes"], home_pref)
     style_away = style_matchup_bonus(a["lanes"], h["lanes"], away_pref)
@@ -1171,25 +1355,24 @@ def plan_substitutions(xi: pd.DataFrame, bench: pd.DataFrame, rng, exclude=()) -
 
 def build_roster(xi: pd.DataFrame, subs: list, reds: list = ()) -> pd.DataFrame:
     """Starters + substitutes, each with the minute they came on / went off. A sent-off player is not replaced."""
-    roster = xi.copy()
-    roster["on_min"] = 0
-    roster["off_min"] = 91          # 91 = still on the pitch at full time
-    roster["sent_off"] = False
+    rows = xi.to_dict("records")
+    for row in rows:
+        row["on_min"], row["off_min"], row["sent_off"] = 0, 91, False
     for r in reds:
-        mask = roster["Player"] == r["player"]
-        roster.loc[mask, "off_min"] = r["minute"]
-        roster.loc[mask, "sent_off"] = True
+        for row in rows:
+            if row["Player"] == r["player"]:
+                row["off_min"], row["sent_off"] = r["minute"], True
     extra = []
     for s in subs:
-        roster.loc[roster["Label"] == s["label"], "off_min"] = s["minute"]
+        for row in rows:
+            if row["Label"] == s["label"]:
+                row["off_min"] = s["minute"]
         extra.append({
             "Slot": s["slot"], "Label": s["label"], "Player": s["on"], "Position": s["on_position"],
             "OVR": s["on_ovr"], "OOP": s["on_position"] != s["slot"], "Role": s["role"],
             "on_min": s["minute"], "off_min": 91, "sent_off": False,
         })
-    if extra:
-        roster = pd.concat([roster, pd.DataFrame(extra)], ignore_index=True)
-    return roster
+    return pd.DataFrame(rows + extra, columns=list(xi.columns) + ["on_min", "off_min", "sent_off"])
 
 def effective_xi(roster: pd.DataFrame, fatigue_mult: float = 1.0) -> pd.DataFrame:
     """One row per slot whose OVR is the minutes-weighted, fatigue-adjusted rating of whoever played there.
@@ -1219,33 +1402,38 @@ def _style_assist_mult(label: str, style: str) -> float:
 def pick_goal_events(xi: pd.DataFrame, n_goals: int, rng=None, style: str = "Balanced", play_type: str = "Balanced"):
     """Scorers and assisters are drawn from the players on the pitch at the minute of the goal.
     `xi` may be a roster with on_min / off_min columns (starters + substitutes)."""
-    valid_xi = xi[xi["Player"] != "Select Player"].copy()
+    valid_xi = xi[xi["Player"] != "Select Player"]
     if n_goals <= 0 or valid_xi.empty:
         return []
     rng = rng or np.random.default_rng()
-    if "on_min" not in valid_xi:
-        valid_xi["on_min"], valid_xi["off_min"] = 0, 91
+    n = len(valid_xi)
+    names = np.array(valid_xi["Player"].tolist(), dtype=object)
+    slots, labels = valid_xi["Slot"].tolist(), valid_xi["Label"].tolist()
+    ovr = np.array(valid_xi["OVR"].tolist(), dtype=float) / 50.0
+    on_min = np.array(valid_xi["on_min"].tolist()) if "on_min" in valid_xi else np.zeros(n, dtype=int)
+    off_min = np.array(valid_xi["off_min"].tolist()) if "off_min" in valid_xi else np.full(n, 91)
 
-    valid_xi["w_score"] = (valid_xi["Slot"].map(SCORER_SLOT_BIAS).fillna(0.5) * (valid_xi["OVR"] / 50.0)).clip(lower=0.01)
-    valid_xi["w_assist"] = (valid_xi["Slot"].map(ASSIST_SLOT_BIAS).fillna(0.5) * (valid_xi["OVR"] / 50.0)).clip(lower=0.01)
-    valid_xi["w_assist"] *= valid_xi["Label"].map(lambda c: _style_assist_mult(c, style))
-    valid_xi["w_score"] *= valid_xi["Slot"].map(lambda g: PLAY_TYPE_SCORER_TILT.get(play_type, {}).get(g, 1.0))
-    valid_xi["w_assist"] *= valid_xi["Slot"].map(lambda g: PLAY_TYPE_ASSIST_TILT.get(play_type, {}).get(g, 1.0))
+    w_score = np.maximum(np.array([SCORER_SLOT_BIAS.get(g, 0.5) for g in slots]) * ovr, 0.01)
+    w_assist = np.maximum(np.array([ASSIST_SLOT_BIAS.get(g, 0.5) for g in slots]) * ovr, 0.01)
+    w_assist = w_assist * np.array([_style_assist_mult(c, style) for c in labels])
+    w_score = w_score * np.array([PLAY_TYPE_SCORER_TILT.get(play_type, {}).get(g, 1.0) for g in slots])
+    w_assist = w_assist * np.array([PLAY_TYPE_ASSIST_TILT.get(play_type, {}).get(g, 1.0) for g in slots])
 
     events = []
     for _ in range(n_goals):
         minute = int(rng.integers(1, 91))
-        on_pitch = valid_xi[(valid_xi["on_min"] <= minute) & (minute < valid_xi["off_min"])]
-        if on_pitch.empty:
-            on_pitch = valid_xi
-        scorer = rng.choice(on_pitch["Player"].to_numpy(), p=(on_pitch["w_score"] / on_pitch["w_score"].sum()).to_numpy())
+        idx = np.flatnonzero((on_min <= minute) & (minute < off_min))
+        if idx.size == 0:
+            idx = np.arange(n)
+        ws = w_score[idx]
+        scorer = rng.choice(names[idx], p=ws / ws.sum())
 
         assister = None
-        if len(on_pitch) > 1 and rng.random() < 0.75:
-            assist_pool = on_pitch[on_pitch["Player"] != scorer]
-            if not assist_pool.empty:
-                assister = rng.choice(assist_pool["Player"].to_numpy(),
-                                      p=(assist_pool["w_assist"] / assist_pool["w_assist"].sum()).to_numpy())
+        if idx.size > 1 and rng.random() < 0.75:
+            pool = idx[names[idx] != scorer]
+            if pool.size:
+                wa = w_assist[pool]
+                assister = rng.choice(names[pool], p=wa / wa.sum())
 
         events.append({"minute": minute, "scorer": scorer, "assist": assister})
 
@@ -1534,8 +1722,14 @@ def table_dataframe(table: dict) -> pd.DataFrame:
 # --------------------------------------------------------------------------
 
 DF = load_data()
-PLAY_TYPE_BASELINE = compute_play_type_baseline(DF)
-PHASE_BASELINE = compute_phase_baseline(DF)
+DATA_KEY = hashlib.md5(pd.util.hash_pandas_object(DF, index=True).values.tobytes()).hexdigest()
+PRED_KEY = (hashlib.md5(PREDICTIONS_DF.to_csv(index=False).encode("utf-8")).hexdigest()
+            if not PREDICTIONS_DF.empty else "none")
+PLAY_TYPE_BASELINE = compute_play_type_baseline(DATA_KEY, DF)
+_BASELINE = compute_phase_baseline(DATA_KEY, DF)
+PHASE_BASELINE, TEAM_BASELINE = _BASELINE["phase"], _BASELINE["teams"]
+STRENGTH_PRIOR = compute_strength_priors(PRED_KEY, tuple(sorted(DF["Team"].unique())), PREDICTIONS_DF)
+TEAM_STRENGTH_DATA.update(STRENGTH_PRIOR["teams"])
 ALL_TEAMS = sorted(DF["Team"].unique().tolist())
 
 def init_session():
@@ -1556,6 +1750,7 @@ def init_session():
     ss.setdefault("bench", [])
     ss.setdefault("suspensions", {})
     ss.setdefault("assistant_notes", [])
+    ss.setdefault("cover", {"slots": {}, "bench": None})
     ss.setdefault("player_roles", {})    
     ss.setdefault("locked_signature", None)
     ss.setdefault("schedule", [])
@@ -1594,6 +1789,7 @@ def start_new_season(team: str):
     ss.pop("bench_select", None)
     ss.suspensions = {}
     ss.assistant_notes = []
+    ss.cover = {"slots": {}, "bench": None}
     ss.player_roles = {}
     ss.locked_signature = None
     teams = ALL_TEAMS[:]
@@ -1646,12 +1842,66 @@ def apply_suspensions_after_match(team: str, served: set, reds: list):
     for r in reds:
         bans[r["player"]] = r["ban"]
 
+def _remember_cover(key, original: str):
+    """A starter who is missing through suspension keeps his place in the locked XI: remember it, together with the
+    bench of that moment, so he returns as soon as his ban is served."""
+    cover = ss.get("cover") or {"slots": {}, "bench": None}
+    cover["slots"].setdefault(key, original)      # a stand-in sent off too never replaces the real starter
+    if cover.get("bench") is None:
+        cover["bench"] = list(ss.bench)
+    ss.cover = cover
+
+def restore_covered_lineup():
+    """Suspended starters are only replaced for the matches they miss. Once a ban is served the player goes back
+    into the slot he had in the locked XI (and the stand-in returns to the bench). Keeps the team locked if it was."""
+    cover = ss.get("cover") or {}
+    slots = cover.get("slots") or {}
+    if not slots:
+        return
+    banned = suspended_for(ss.user_team)
+    was_locked = is_team_locked()
+    notes, changed = [], False
+    for key, original in list(slots.items()):
+        if key not in ss.manual_lineup:                       # formation changed since: nothing to restore
+            del slots[key]
+            continue
+        if original in banned:
+            continue
+        del slots[key]
+        if original in ss.manual_lineup.values():            # already back in the XI somewhere
+            continue
+        stand_in = ss.manual_lineup[key]
+        ss.manual_lineup[key] = original
+        ss[slot_widget_key(key[1])] = original
+        changed = True
+        notes.append(f"Matchday {ss.matchday + 1}: {original} is back at {key[1]} after his suspension"
+                     + (f" (replacing {stand_in})" if stand_in != "Select Player" else ""))
+    if not changed:
+        if not slots:
+            cover["bench"] = None
+        return
+    squad_names = set(get_user_squad()["Player"])
+    starters = {p for p in ss.manual_lineup.values() if p != "Select Player"}
+    new_bench = [p for p in (cover.get("bench") or []) if p in squad_names and p not in starters and p not in banned]
+    for p in ss.bench:
+        if p not in new_bench and p not in starters and len(new_bench) < BENCH_SIZE:
+            new_bench.append(p)
+    ss.bench = new_bench[:BENCH_SIZE]
+    ss["bench_select"] = list(ss.bench)
+    if not slots:
+        cover["bench"] = None
+    ss.assistant_notes = list(ss.get("assistant_notes", [])) + notes
+    if was_locked:
+        ss.locked_signature = current_tactics_signature()
+
 def drop_sent_off_from_user_lineup(reds: list):
     """Sent-off players leave the user's XI right away, so the next game cannot be played with them."""
     for r in reds:
         for key, player in list(ss.manual_lineup.items()):
             if player == r["player"]:
+                _remember_cover(key, player)
                 ss.manual_lineup[key] = "Select Player"
+                ss.pop(slot_widget_key(key[1]), None)       # the slot's dropdown must not keep showing the sent-off player
         ss.bench = [p for p in ss.bench if p != r["player"]]
         if "bench_select" in ss:
             ss["bench_select"] = [p for p in ss["bench_select"] if p != r["player"]]
@@ -1677,6 +1927,8 @@ def autofix_user_lineup() -> list:
         pick = _best_replacement(squad[~squad["Player"].isin(taken)], grp)
         if pick is None:
             continue
+        if old in suspended_for(ss.user_team):
+            _remember_cover((grp, code), old)
         ss.manual_lineup[(grp, code)] = pick["Player"]
         taken.add(pick["Player"])
         notes.append(f"Matchday {ss.matchday + 1}: {pick['Player']} starts at {code}"
@@ -1953,12 +2205,14 @@ def play_fixture(home, away, rng):
         "round": ss.matchday + 1, "home": home, "away": away,
         "hg": result["home_goals"], "ag": result["away_goals"],
         "is_user": ss.user_team in (home, away),
+        "user_style": ((home_type, home_fit) if home == ss.user_team else (away_type, away_fit)) if ss.user_team in (home, away) else None,
         "home_events": home_events, "away_events": away_events,
     })
     return result, home_events, away_events
 
 def play_next_matchday(auto_fix: bool = False):
     if ss.matchday >= len(ss.schedule): return None
+    restore_covered_lineup()
     if auto_fix and not is_team_locked():
         # Simulating several matchdays in a row: the assistant manager replaces suspended / missing players
         autofix_user_lineup()
@@ -2005,7 +2259,7 @@ def simulate_to_end():
 # --------------------------------------------------------------------------
 with st.sidebar:
     st.title("⚽ Liga Portugal Manager")
-    st.caption("Liga Portugal 2026/27")
+    st.caption("@TheStatsWay - Liga Portugal 2026/27")
 
     if ss.season_started:
         st.metric("Managing", ss.user_team)
@@ -2014,6 +2268,8 @@ with st.sidebar:
         if st.button("🔄 Restart Game", use_container_width=True):
             reset_all()
             st.rerun()
+
+
 
 # --------------------------------------------------------------------------
 # Main area View Renders
@@ -2064,7 +2320,7 @@ No transfer market — you manage exactly the players your club already has.</p>
     if not ss.season_started:
         st.subheader("🏁 Start Your Career")
         st.markdown("Select a club below to begin managing.")
-        
+
         teams = ALL_TEAMS[:]
         for i in range(0, len(teams), 3):
             cols = st.columns(3)
@@ -2093,12 +2349,15 @@ def squad_fit_header_html(formation: str, play_type: str, fit_info) -> str:
     if fit_info is None:
         box = (f'<span style="{box_base.format(border="var(--border-soft)")}">'
                f'<span style="{label_css}">Squad fit · {html_lib.escape(play_type)}</span>'
-               f'<span style="{muted}">Pick your full XI</span></span>')
+               f'<span style="{muted}">Add your first player</span></span>')
     else:
         pct = round(fit_info["fit"] * 100)
         color, verdict = (("#22c55e", "Good fit") if pct >= 60 else ("#f59e0b", "Average fit") if pct >= 40 else ("#ef4444", "Poor fit"))
         tip_lines = [f'{label}{": " + value if value else ""} ({v})' for label, value, v in fit_info["details"]]
         tip = html_lib.escape("&#10;".join(tip_lines), quote=True).replace("&amp;#10;", "&#10;")
+        n = fit_info.get("picked", 11)
+        partial = (f'<span style="font-size:0.62rem;color:var(--text-muted);">Based on {n}/11 players so far</span>'
+                   if n < 11 else "")
         parts = (f'Players {round(fit_info["players"] * 100)}% · Tactics {round(fit_info["tactics"] * 100)}% · '
                  f'Roles {round(fit_info["roles"] * 100)}%')
         box = (f'<span title="{tip}" style="{box_base.format(border=color)}">'
@@ -2108,7 +2367,7 @@ def squad_fit_header_html(formation: str, play_type: str, fit_info) -> str:
                f'<span style="font-size:0.72rem;color:var(--text-muted);">{verdict}</span></span>'
                f'<span style="display:block;height:4px;border-radius:2px;background:rgba(255,255,255,0.1);">'
                f'<span style="display:block;height:4px;border-radius:2px;width:{pct}%;background:{color};"></span></span>'
-               f'<span style="font-size:0.62rem;color:var(--text-muted);">{parts}</span></span>')
+               f'<span style="font-size:0.62rem;color:var(--text-muted);">{parts}</span>{partial}</span>')
     return f'<div style="{head_css}">{title}{box}</div>'
 
 def generate_pitch_html(xi_df: pd.DataFrame, avg_ratings: dict, formation: str, show_roles: bool = True) -> str:
@@ -2312,9 +2571,9 @@ def team_form(team: str, n: int = 5) -> list:
 
 def strength_profile(xi: pd.DataFrame, team: str):
     """(index per line where 50 = league average and 10 = one standard deviation, raw lane ratings)."""
-    r = phase_ratings(xi, "Balanced", team_name=team)
-    idx = {k: 50 + 10 * (r[k] - PHASE_BASELINE[k][0]) / PHASE_BASELINE[k][1] for k in ("att", "mid", "def")}
-    return idx, r["lanes"]
+    r = phase_ratings(xi, "Balanced")
+    z = team_phase_z(r, team)
+    return {k: 50 + 10 * z[k] for k in ("att", "mid", "def")}, r["lanes"]
 
 def scouting_tips(opp: str, plan: tuple, their_lanes: dict, their_idx: dict, my_lanes, my_xi, my_ready: bool) -> list:
     xi, ment, tempo, line, press, formation, pref, ptype, passing, stance = plan
@@ -2473,12 +2732,12 @@ def render_squad_tactics():
         render_need_season_prompt()
         return
 
+    restore_covered_lineup()
     st.subheader(f"{ss.user_team} — Squad & Tactics")
 
     if ss.user_team in TEAM_STRENGTH_DATA:
         info = TEAM_STRENGTH_DATA[ss.user_team]
-        mod_pct = f"{'+' if info['modifier'] >= 1.0 else ''}{round((info['modifier'] - 1.0) * 100, 1)}%"
-        st.caption(f"📊 **Expected Finish:** #{info['exp_rank']} | **Strength Modifier:** {info['modifier']}x ({mod_pct} Rating Factor)")
+        st.caption(f"📊 **Expected finish:** #{info['exp_rank']:.1f} · **Pre-season strength:** {info['z']:+.2f}σ (league average = 0)")
         
     squad = get_user_squad()
     pool_squad = available_squad()          # suspended players cannot be picked
@@ -2551,6 +2810,7 @@ def render_squad_tactics():
             ss.formation = new_formation
             ss.manual_lineup = {}
             ss.player_roles = {}
+            ss.cover = {"slots": {}, "bench": None}
             st.rerun()
 
         if "play_type_choice" not in ss:
@@ -2631,19 +2891,32 @@ def render_squad_tactics():
             # Filter out already selected players
             avail_nat = [p for p in pos_players if p not in other_selected]
             
-            avail = ["Select Player"] + avail_nat
-            
+            # Natural-position players first; then everyone else still free, closest position first, so a slot can
+            # always be filled by hand (e.g. when suspensions leave no spare player in that position)
+            others = pool_squad[(pool_squad["Position"] != pos) & ~pool_squad["Player"].isin(other_selected)]
+            if pos != "GK" or not avail_nat:
+                if pos != "GK":
+                    others = others[others["Position"] != "GK"]
+                others = others.assign(_d=others["Position"].map(lambda p: _group_distance(p, pos)))
+                others = others.sort_values(["_d", "OVR"], ascending=[True, False])
+                avail_oop = others["Player"].tolist()
+            else:
+                avail_oop = []
+            avail = ["Select Player"] + avail_nat + avail_oop
+            oop_info = {r["Player"]: f'{r["Player"]} · {r["Position"]} (out of position)' for _, r in others.iterrows()} if avail_oop else {}
+
             # Ensure the currently selected player remains visible even if filters change
             if current_val != "Select Player" and current_val not in avail:
                 avail.append(current_val)
-                
+
             idx = avail.index(current_val) if current_val in avail else 0
             
             col_p, col_r = st.columns([6, 4])
             with col_p:
                 selected = st.selectbox(
                     f"{label} · {SLOT_INFO[label]['name']}", avail, index=idx, key=slot_widget_key(label),
-                    help=f"Filled from {pos} players",
+                    format_func=lambda p, _i=oop_info: _i.get(p, p),
+                    help=f"{pos} players first; other players can fill in (out of position, rated lower)",
                 )
                 if ss.manual_lineup.get(key) != selected:
                     ss.manual_lineup[key] = selected
@@ -2694,10 +2967,12 @@ def render_squad_tactics():
 
     with col_pitch:
         fit_info = None
-        if (current_xi_df["Player"] != "Select Player").sum() >= 11:
+        n_picked = int((current_xi_df["Player"] != "Select Player").sum())
+        if n_picked >= 1:
             fit_info = play_type_squad_fit(ss.play_type, current_xi_df, ss.user_team, ss.formation, ss.mentality,
                                            ss.tempo, ss.oop_line, ss.pressing, ss.attack_pref,
                                            ss.passing_style, ss.def_stance)
+            fit_info["picked"] = n_picked
         st.markdown(squad_fit_header_html(ss.formation, ss.play_type, fit_info), unsafe_allow_html=True)
         avg_ratings = {k: ss.player_ratings_sum[k]/ss.player_ratings_count[k] for k in ss.player_ratings_sum if ss.player_ratings_count.get(k, 0) > 0}
         st.markdown(generate_pitch_html(current_xi_df, avg_ratings, ss.formation), unsafe_allow_html=True)
@@ -2786,6 +3061,7 @@ def render_play():
             st.dataframe(ratings_df, use_container_width=True, hide_index=True)
         return
 
+    restore_covered_lineup()
     st.markdown(f"**Matchday {ss.matchday + 1} of {len(ss.schedule)}**")
 
     suspended = suspended_for(ss.user_team)
@@ -3010,6 +3286,242 @@ def best_player_per_team(players: pd.DataFrame, min_apps: int) -> pd.DataFrame:
                      "Rating": float(best["Rating"])})
     return pd.DataFrame(rows)
 
+# --------------------------------------------------------------------------
+# Season report card: a shareable PNG with the league finish, the Team of the Season and your own team
+# --------------------------------------------------------------------------
+def _ordinal(n: int) -> str:
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+def _card_font(size: int, bold: bool = False):
+    from PIL import ImageFont
+    names = (["DejaVuSans-Bold.ttf", "Arial Bold.ttf", "arialbd.ttf", "Helvetica-Bold.ttf"] if bold
+             else ["DejaVuSans.ttf", "Arial.ttf", "arial.ttf", "Helvetica.ttf"])
+    for n in names:
+        try:
+            return ImageFont.truetype(n, size)
+        except Exception:
+            continue
+    try:
+        return ImageFont.load_default(size)
+    except Exception:
+        return ImageFont.load_default()
+
+def _short_name(name: str, limit: int = 13) -> str:
+    parts = str(name).split()
+    s = parts[-1] if len(parts) > 1 else str(name)
+    return s if len(s) <= limit else s[:limit - 1] + "…"
+
+def _draw_pitch(d, box, xi: pd.DataFrame, formation: str, title: str, subtitle: str, accent, fonts):
+    """A vertical pitch with the XI placed on the formation layout (keeper at the bottom)."""
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    d.text((x0, y0 - 52), title, font=fonts["h2"], fill=(255, 255, 255))
+    d.text((x0, y0 - 24), subtitle, font=fonts["small"], fill=(150, 150, 175))
+    d.rounded_rectangle(box, radius=14, fill=(24, 92, 52), outline=(70, 150, 100), width=2)
+    line = (70, 150, 100)
+    d.line([(x0, (y0 + y1) // 2), (x1, (y0 + y1) // 2)], fill=line, width=2)
+    r = int(w * 0.14)
+    d.ellipse([(x0 + x1) // 2 - r, (y0 + y1) // 2 - r, (x0 + x1) // 2 + r, (y0 + y1) // 2 + r], outline=line, width=2)
+    bw, bh = int(w * 0.5), int(h * 0.14)
+    d.rectangle([(x0 + x1) // 2 - bw // 2, y0, (x0 + x1) // 2 + bw // 2, y0 + bh], outline=line, width=2)
+    d.rectangle([(x0 + x1) // 2 - bw // 2, y1 - bh, (x0 + x1) // 2 + bw // 2, y1], outline=line, width=2)
+    layout = FORMATION_LAYOUT.get(formation, FORMATION_LAYOUT["4-3-3"])
+    for _, row in xi.iterrows():
+        pos = layout.get(row["Label"])
+        if not pos:
+            continue
+        px, py = int(x0 + pos[1] * w), int(y1 - pos[0] * h)
+        rating = float(row.get("Rating", 0) or 0)
+        col = (34, 197, 94) if rating >= 7.0 else (245, 158, 11) if rating >= 6.3 else (239, 68, 68)
+        mine = row.get("Team") == ss.user_team
+        d.ellipse([px - 17, py - 17, px + 17, py + 17], fill=col, outline=accent if mine else (255, 255, 255), width=3 if mine else 2)
+        txt = f"{rating:.1f}" if rating else "-"
+        d.text((px, py), txt, font=fonts["tiny_b"], fill=(10, 10, 20), anchor="mm")
+        d.text((px, py + 31), _short_name(row["Player"]), font=fonts["tiny_b"], fill=(255, 255, 255), anchor="mm",
+               stroke_width=2, stroke_fill=(10, 40, 24))
+        d.text((px, py + 47), str(row["Team"])[:14], font=fonts["tiny"], fill=(215, 235, 222), anchor="mm",
+               stroke_width=2, stroke_fill=(10, 40, 24))
+
+def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: str = "4-3-3") -> bytes:
+    """The user's season on one image: final league table, Team of the Season, and the club's own best XI."""
+    from PIL import Image, ImageDraw
+    standings = table_dataframe(ss.table)
+    team = ss.user_team
+    pos = int(standings.index[standings["Team"] == team][0])
+    me = standings[standings["Team"] == team].iloc[0]
+    exp = TEAM_STRENGTH_DATA.get(team, {}).get("exp_rank")
+    tos = pick_team_of_season(players, tos_formation, min_apps)
+    mine = players[players["Team"] == team]
+    # your XI: the players you put in each slot in Squad & Tactics (a starter still banned at the end keeps his slot)
+    by_name = players.set_index("Player")
+    squad_pos = DF[DF["Team"] == team].set_index("Player")["Position"]
+    covered = (ss.get("cover") or {}).get("slots", {})
+    rows = []
+    for (grp, label), name in ss.manual_lineup.items():
+        if name == "Select Player":
+            name = covered.get((grp, label), name)
+        if name == "Select Player" or name not in squad_pos.index:
+            continue
+        
+        st_row = by_name.loc[name] if name in by_name.index else None
+        rating = 0.0
+        if st_row is not None:
+            if isinstance(st_row, pd.DataFrame):
+                st_row = st_row.iloc[0]
+            val = st_row["Rating"] if "Rating" in st_row else 0.0
+            if isinstance(val, pd.Series):
+                val = val.iloc[0]
+            try:
+                rating = float(val) if not pd.isna(val) else 0.0
+            except (TypeError, ValueError):
+                rating = 0.0
+
+        rows.append({
+            "Slot": grp, "Label": label, "Player": name, "Team": team, 
+            "Position": squad_pos[name], "Rating": rating
+        })
+    my_xi = pd.DataFrame(rows, columns=["Slot", "Label", "Player", "Team", "Position", "Rating"])
+    W, H = 1500, 960
+    bg, card, pink, muted = (11, 11, 20), (18, 18, 31), (255, 47, 123), (150, 150, 175)
+    img = Image.new("RGB", (W, H), bg)
+    d = ImageDraw.Draw(img)
+    fonts = {"h1": _card_font(44, True), "big": _card_font(64, True), "h2": _card_font(24, True), "body": _card_font(18),
+             "body_b": _card_font(18, True), "small": _card_font(15), "tiny": _card_font(12), "tiny_b": _card_font(13, True)}
+
+    # main style of play: the Type of Play used in most of the user's matches
+    used = [h["user_style"] for h in ss.history if h.get("user_style")]
+    style_line = None
+    if used:
+        counts = {}
+        for t, f in used:
+            c = counts.setdefault(t, [0, 0.0])
+            c[0] += 1
+            c[1] += f
+        main, (n_used, fit_sum) = max(counts.items(), key=lambda kv: (kv[1][0], kv[1][1]))
+        style_line = f"Main style of play: {main}  ·  {n_used} of {len(used)} matches  ·  {round(100 * fit_sum / n_used)}% average fit"
+
+    # header
+    d.rectangle([0, 0, W, 6], fill=pink)
+    d.text((40, 28), "LIGA PORTUGAL MANAGER · SEASON REPORT CARD", font=fonts["small"], fill=pink)
+    d.text((40, 54), str(team), font=fonts["h1"], fill=(255, 255, 255))
+    if style_line:
+        d.rounded_rectangle([40, 108, 40 + int(d.textlength(style_line, font=fonts["body_b"])) + 28, 140], radius=16, fill=card, outline=pink, width=2)
+        d.text((54, 124), style_line, font=fonts["body_b"], fill=(255, 255, 255), anchor="lm")
+    d.text((W - 40, 28), f"Finished {_ordinal(pos)}", font=fonts["big"], fill=pink if pos > 3 else (250, 204, 21), anchor="ra")
+    summary = (f"{int(me['Pts'])} pts · {int(me['W'])}W {int(me['D'])}D {int(me['L'])}L · "
+               f"{int(me['GF'])}-{int(me['GA'])} (GD {int(me['GD']):+d})")
+    d.text((W - 40, 100), summary, font=fonts["body"], fill=(220, 220, 235), anchor="ra")
+    if exp:
+        diff = round(exp) - pos
+        verdict = (f"{diff} place{'s' if diff != 1 else ''} above expectation" if diff > 0
+                   else f"{-diff} place{'s' if diff != -1 else ''} below expectation" if diff < 0 else "right on expectation")
+        d.text((W - 40, 126), f"Pre-season expectation #{exp:.1f} · {verdict}", font=fonts["small"], fill=muted, anchor="ra")
+
+    # league table (left)
+    tx0, ty0, tx1 = 40, 208, 560
+    n = len(standings)
+    row_h = min(34, (H - ty0 - 140) // (n + 1))
+    d.text((tx0, ty0 - 38), "Final league table", font=fonts["h2"], fill=(255, 255, 255))
+    d.rounded_rectangle([tx0, ty0, tx1, ty0 + row_h * (n + 1) + 8], radius=12, fill=card)
+    cols = [("#", tx0 + 14, "la"), ("Team", tx0 + 52, "la"), ("P", tx0 + 330, "ra"), ("GD", tx0 + 400, "ra"), ("Pts", tx0 + 490, "ra")]
+    for label, cx, anc in cols:
+        d.text((cx, ty0 + 8), label, font=fonts["small"], fill=muted, anchor=anc)
+    for i, (p, r) in enumerate(standings.iterrows()):
+        y = ty0 + row_h * (i + 1) + 4
+        is_me = r["Team"] == team
+        if is_me:
+            d.rounded_rectangle([tx0 + 6, y - 2, tx1 - 6, y + row_h - 4], radius=8, fill=(88, 18, 52))
+        zone = (250, 204, 21) if p == 1 else (34, 197, 94) if p <= 3 else (239, 68, 68) if p > n - 3 else None
+        if zone:
+            d.rectangle([tx0 + 6, y, tx0 + 10, y + row_h - 6], fill=zone)
+        f = fonts["body_b"] if is_me else fonts["body"]
+        c = (255, 255, 255) if is_me else (205, 205, 220)
+        d.text((tx0 + 14, y + 2), str(p), font=f, fill=c)
+        d.text((tx0 + 52, y + 2), str(r["Team"])[:24], font=f, fill=c)
+        d.text((tx0 + 330, y + 2), str(int(r["P"])), font=f, fill=c, anchor="ra")
+        d.text((tx0 + 400, y + 2), f"{int(r['GD']):+d}", font=f, fill=c, anchor="ra")
+        d.text((tx0 + 490, y + 2), str(int(r["Pts"])), font=fonts["body_b"], fill=c, anchor="ra")
+
+    # goals scored / against (under the table)
+    gy = ty0 + row_h * (n + 1) + 8 + 16
+    for gx, label, val, col in ((tx0, "GOALS SCORED", int(me["GF"]), (34, 197, 94)),
+                                (tx0 + 270, "GOALS AGAINST", int(me["GA"]), (239, 68, 68))):
+        d.rounded_rectangle([gx, gy, gx + 250, gy + 74], radius=12, fill=card, outline=col, width=2)
+        d.text((gx + 16, gy + 10), label, font=fonts["tiny"], fill=muted)
+        d.text((gx + 16, gy + 26), str(val), font=fonts["h1"], fill=col)
+        d.text((gx + 234, gy + 52), f"{val / max(1, int(me['P'])):.2f} per game", font=fonts["tiny"], fill=muted, anchor="rs")
+
+    # pitches (right)
+    py0, ph, pw = 250, 540, 400
+    _draw_pitch(d, (610, py0, 610 + pw, py0 + ph), tos, tos_formation, "Team of the Season",
+                f"Best XI of the league · {tos_formation}", (250, 204, 21), fonts)
+    _draw_pitch(d, (1060, py0, 1060 + pw, py0 + ph), my_xi, ss.formation, f"{team}'s Starting XI",
+                f"Your lineup from Squad & Tactics · {ss.formation}", pink, fonts)
+
+    # key facts strip
+    fy = py0 + ph + 28
+    facts = []
+    if len(mine):
+        best = _rank_by_performance(mine[mine["Apps"] >= min_apps] if (mine["Apps"] >= min_apps).any() else mine).iloc[0]
+        boot = mine.sort_values(["Goals", "Assists", "Rating"], ascending=False).iloc[0]
+        facts += [("Best player", f"{best['Player']} ({best['Rating']:.2f})"), ("Top scorer", f"{boot['Player']} ({int(boot['Goals'])})")]
+    facts.append(("In the Team of the Season", f"{int((tos['Team'] == team).sum())} of 11"))
+    fx = 610
+    for label, val in facts:
+        d.rounded_rectangle([fx, fy, fx + 270, fy + 70], radius=12, fill=card)
+        d.text((fx + 14, fy + 10), label.upper(), font=fonts["tiny"], fill=muted)
+        d.text((fx + 14, fy + 32), val[:26], font=fonts["body_b"], fill=(255, 255, 255))
+        fx += 285
+    d.text((W - 40, H - 28), "@TheStatsWay", font=fonts["tiny"], fill=muted, anchor="ra")
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+def render_share_widget(png: bytes, team: str, place: str):
+    """Share buttons for the report card. The phone / browser share sheet can send the image itself; the network
+    links can only carry the text, so the image is attached by hand (download or copy it first)."""
+    from urllib.parse import quote
+    text = f"{team} finished {place} in my Liga Portugal Manager season! ⚽🏆"
+    q = quote(text)
+    b64 = base64.b64encode(png).decode()
+    html = f"""
+<style>
+ body{{margin:0;font-family:Sora,Arial,sans-serif;color:#fff}}
+ .row{{display:flex;flex-direction:column;gap:8px}}
+ .b{{display:block;padding:10px 12px;border-radius:10px;border:1px solid #ff2f7b;background:#12121f;color:#fff;
+    font-size:14px;font-weight:600;text-align:center;text-decoration:none;cursor:pointer}}
+ .b.p{{background:#ff2f7b}} .b:hover{{filter:brightness(1.15)}}
+ #msg{{margin-top:8px;font-size:12px;color:#9a9ab5;min-height:16px}}
+</style>
+<div class="row">
+ <button class="b p" id="share">📤 Share to your apps…</button>
+ <button class="b" id="copy">📋 Copy image</button>
+ <a class="b" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text={q}">𝕏 Post on X</a>
+ <a class="b" target="_blank" rel="noopener" href="https://wa.me/?text={q}">WhatsApp</a>
+ <a class="b" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?quote={q}&u=https%3A%2F%2Fstreamlit.io">Facebook</a>
+ <a class="b" target="_blank" rel="noopener" href="https://t.me/share/url?url=https%3A%2F%2Fstreamlit.io&text={q}">Telegram</a>
+</div>
+<div id="msg">“Share to your apps” opens your device's share sheet (Instagram, WhatsApp, Messages…) with the image attached.
+For the links below, copy or download the image first and attach it to your post.</div>
+<script>
+const b64="{b64}", msg=document.getElementById('msg');
+function blob(){{const bin=atob(b64),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return new Blob([a],{{type:'image/png'}});}}
+document.getElementById('share').onclick=async()=>{{
+  const file=new File([blob()],'season_report_card.png',{{type:'image/png'}});
+  try{{
+    if(navigator.canShare&&navigator.canShare({{files:[file]}})){{await navigator.share({{files:[file],text:{json.dumps(text)}}});}}
+    else if(navigator.share){{await navigator.share({{text:{json.dumps(text)}}});msg.textContent='Your browser cannot share images directly: download the image and attach it.';}}
+    else{{msg.textContent='Sharing is not supported in this browser: use Copy image or download the image.';}}
+  }}catch(e){{if(e&&e.name!=='AbortError')msg.textContent='Could not open the share sheet: '+e.message;}}
+}};
+document.getElementById('copy').onclick=async()=>{{
+  try{{await navigator.clipboard.write([new ClipboardItem({{'image/png':blob()}})]);msg.textContent='Image copied: paste it into your post.';}}
+  catch(e){{msg.textContent='Copying is not allowed here: download the image instead.';}}
+}};
+</script>"""
+    components.html(html, height=335)
+
 def render_awards():
     if not ss.season_started:
         render_need_season_prompt()
@@ -3045,6 +3557,27 @@ def render_awards():
     c2.caption(f'{boot["Team"]} · {boot["Goals"]} goals')
     c3.metric("🎯 Top Assister", playmaker["Player"])
     c3.caption(f'{playmaker["Team"]} · {playmaker["Assists"]} assists')
+
+    st.divider()
+    st.markdown("### 🧾 Season Report Card")
+    if season_over:
+        st.caption("Your league finish, the Team of the Season and your club's best XI on one image, ready to share.")
+        try:
+            card_png = build_report_card_png(players, min_apps)
+            st.image(card_png, use_container_width=True)
+            place = _ordinal(int(table_dataframe(ss.table).index[table_dataframe(ss.table)["Team"] == ss.user_team][0]))
+            menu = (st.popover("📤 Share your report card", use_container_width=True) if hasattr(st, "popover")
+                    else st.expander("📤 Share your report card"))
+            with menu:
+                render_share_widget(card_png, ss.user_team, place)
+                st.download_button("⬇️ Download image (PNG)", card_png,
+                                   file_name=f"{ss.user_team.replace(' ', '_')}_season_report_card.png",
+                                   mime="image/png", use_container_width=True)
+        except Exception as exc:
+            st.warning(f"The report card could not be created: {exc}")
+    else:
+        st.info("Your report card is created when the season ends. It will show your league finish, the Team of the "
+                "Season and your club's best XI.")
 
     st.divider()
     st.markdown("### ⭐ Team of the Season")
