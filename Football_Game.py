@@ -12,6 +12,7 @@ import streamlit as st
 from pathlib import Path
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
+import unicodedata
 
 try:  # small DataFrames are much faster with plain Python strings than with pyarrow-backed ones
     pd.options.mode.string_storage = "python"
@@ -261,6 +262,19 @@ ATTR_RENAME = {
     "Assist.Creation": "Assist-Creation",
 }
 RAW_ATTR_MAX = 19
+
+def _safe_ascii(text: str) -> str:
+    """Replaces accents like ó -> o, í -> i to guarantee rendering on any font."""
+    if not isinstance(text, str):
+        return str(text)
+    try:
+        text = text.encode("latin-1").decode("utf-8")
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass
+    return "".join(
+        c for c in unicodedata.normalize("NFD", text)
+        if unicodedata.category(c) != "Mn"
+    )
 
 def _repair_mojibake(value):
     if not isinstance(value, str):
@@ -3294,19 +3308,14 @@ def _ordinal(n: int) -> str:
 
 def _card_font(size: int, bold: bool = False):
     from PIL import ImageFont
-    # Try system fonts that support full extended Latin characters (á, ó, ã, ç, etc.)
-    names = (
-        ["DejaVuSans-Bold.ttf", "arialbd.ttf", "Arial Bold.ttf", "Helvetica-Bold.ttf", "FreeSans-Bold.ttf"]
-        if bold else
-        ["DejaVuSans.ttf", "arial.ttf", "Arial.ttf", "Helvetica.ttf", "FreeSans.ttf"]
-    )
+    names = (["DejaVuSans-Bold.ttf", "Arial Bold.ttf", "arialbd.ttf", "Helvetica-Bold.ttf"] if bold
+             else ["DejaVuSans.ttf", "Arial.ttf", "arial.ttf", "Helvetica.ttf"])
     for n in names:
         try:
             return ImageFont.truetype(n, size)
         except Exception:
             continue
     try:
-        # Fallback to Pillow's default truetype if available
         return ImageFont.load_default(size)
     except Exception:
         return ImageFont.load_default()
@@ -3342,9 +3351,9 @@ def _draw_pitch(d, box, xi: pd.DataFrame, formation: str, title: str, subtitle: 
         d.ellipse([px - 17, py - 17, px + 17, py + 17], fill=col, outline=accent if mine else (255, 255, 255), width=3 if mine else 2)
         txt = f"{rating:.1f}" if rating else "-"
         d.text((px, py), txt, font=fonts["tiny_b"], fill=(10, 10, 20), anchor="mm")
-        d.text((px, py + 31), _short_name(row["Player"]), font=fonts["tiny_b"], fill=(255, 255, 255), anchor="mm",
+        d.text((px, py + 31), _safe_ascii(_short_name(row["Player"])), font=fonts["tiny_b"], fill=(255, 255, 255), anchor="mm",
                stroke_width=2, stroke_fill=(10, 40, 24))
-        d.text((px, py + 47), str(row["Team"])[:14], font=fonts["tiny"], fill=(215, 235, 222), anchor="mm",
+        d.text((px, py + 47), _safe_ascii(str(row["Team"]))[:14], font=fonts["tiny"], fill=(215, 235, 222), anchor="mm",
                stroke_width=2, stroke_fill=(10, 40, 24))
 
 def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: str = "4-3-3") -> bytes:
@@ -3362,7 +3371,6 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
     squad_pos = DF[DF["Team"] == team].set_index("Player")["Position"]
     covered = (ss.get("cover") or {}).get("slots", {})
     rows = []
-   
     for (grp, label), name in ss.manual_lineup.items():
         if name == "Select Player":
             name = covered.get((grp, label), name)
@@ -3386,20 +3394,6 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
             "Slot": grp, "Label": label, "Player": name, "Team": team, 
             "Position": squad_pos[name], "Rating": rating
         })
-
-    def _clean_text(val: str) -> str:
-        if not isinstance(val, str):
-            return str(val)
-        # Fix broken latin-1 / utf-8 encoding if present
-        try:
-            val = val.encode("latin-1").decode("utf-8")
-        except (UnicodeDecodeError, UnicodeEncodeError):
-            pass
-        # If font glyphs still fail on certain characters, convert/strip accents cleanly
-        import unicodedata
-        # Normalize unicode to avoid split accents
-        return unicodedata.normalize("NFC", val)
-    
     my_xi = pd.DataFrame(rows, columns=["Slot", "Label", "Player", "Team", "Position", "Rating"])
     W, H = 1500, 960
     bg, card, pink, muted = (11, 11, 20), (18, 18, 31), (255, 47, 123), (150, 150, 175)
@@ -3423,7 +3417,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
     # header
     d.rectangle([0, 0, W, 6], fill=pink)
     d.text((40, 28), "LIGA PORTUGAL MANAGER · SEASON REPORT CARD", font=fonts["small"], fill=pink)
-    d.text((40, 54), str(team), font=fonts["h1"], fill=(255, 255, 255))
+    d.text((40, 54), _safe_ascii(str(team)), font=fonts["h1"], fill=(255, 255, 255))
     if style_line:
         d.rounded_rectangle([40, 108, 40 + int(d.textlength(style_line, font=fonts["body_b"])) + 28, 140], radius=16, fill=card, outline=pink, width=2)
         d.text((54, 124), style_line, font=fonts["body_b"], fill=(255, 255, 255), anchor="lm")
@@ -3457,7 +3451,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
         f = fonts["body_b"] if is_me else fonts["body"]
         c = (255, 255, 255) if is_me else (205, 205, 220)
         d.text((tx0 + 14, y + 2), str(p), font=f, fill=c)
-        d.text((tx0 + 52, y + 2), str(r["Team"])[:24], font=f, fill=c)
+        d.text((tx0 + 52, y + 2), _safe_ascii(str(r["Team"]))[:24], font=f, fill=c)
         d.text((tx0 + 330, y + 2), str(int(r["P"])), font=f, fill=c, anchor="ra")
         d.text((tx0 + 400, y + 2), f"{int(r['GD']):+d}", font=f, fill=c, anchor="ra")
         d.text((tx0 + 490, y + 2), str(int(r["Pts"])), font=fonts["body_b"], fill=c, anchor="ra")
