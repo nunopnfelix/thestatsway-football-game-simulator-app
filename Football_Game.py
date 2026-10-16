@@ -12,7 +12,6 @@ import streamlit as st
 from pathlib import Path
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
-import unicodedata
 
 try:  # small DataFrames are much faster with plain Python strings than with pyarrow-backed ones
     pd.options.mode.string_storage = "python"
@@ -263,19 +262,6 @@ ATTR_RENAME = {
 }
 RAW_ATTR_MAX = 19
 
-def _safe_ascii(text: str) -> str:
-    """Replaces accents like ó -> o, í -> i to guarantee rendering on any font."""
-    if not isinstance(text, str):
-        return str(text)
-    try:
-        text = text.encode("latin-1").decode("utf-8")
-    except (UnicodeDecodeError, UnicodeEncodeError):
-        pass
-    return "".join(
-        c for c in unicodedata.normalize("NFD", text)
-        if unicodedata.category(c) != "Mn"
-    )
-
 def _repair_mojibake(value):
     if not isinstance(value, str):
         return value
@@ -500,6 +486,73 @@ def default_role_for(group: str) -> str:
     if group in ("CF", "AM & W"): return "Attack"
     if group == "MF": return "Balanced"
     return "Defensive"
+
+# ---- Build-your-own formation --------------------------------------------------
+# The user adds slots (GK, LB, DM, ST ...) one by one. A custom shape needs exactly 11 and at least these per group:
+CUSTOM_FORMATION = "Custom"
+CUSTOM_LABEL = "✏️ Custom (build your own)"
+PRESET_FORMATIONS = list(FORMATIONS)
+CUSTOM_MIN = {"GK": 1, "CB": 2, "FB & WB": 2, "MF": 1}
+CUSTOM_GROUP_NAME = {"GK": "Goalkeeper", "CB": "Centre-backs", "FB & WB": "Full-backs / wing-backs", "MF": "Midfielders"}
+CUSTOM_ORDER = ["GK", "LB", "LCB", "CB", "RCB", "RB", "LWB", "RWB", "DM", "LDM", "RDM", "LCM", "CM", "RCM",
+                "LM", "RM", "LW", "LAM", "AM", "RAM", "RW", "LST", "ST", "RST"]
+# (depth, lateral) of every slot on the pitch, taken from the preset shapes
+CUSTOM_COORDS = {
+    "GK": (0.08, 0.50), "LB": (0.26, 0.12), "LCB": (0.22, 0.34), "CB": (0.20, 0.50), "RCB": (0.22, 0.66),
+    "RB": (0.26, 0.88), "LWB": (0.42, 0.08), "RWB": (0.42, 0.92), "DM": (0.40, 0.50), "LDM": (0.42, 0.36),
+    "RDM": (0.42, 0.64), "LCM": (0.52, 0.28), "CM": (0.47, 0.50), "RCM": (0.52, 0.72), "LM": (0.56, 0.12),
+    "RM": (0.56, 0.88), "LW": (0.74, 0.12), "LAM": (0.68, 0.30), "AM": (0.66, 0.50), "RAM": (0.68, 0.70),
+    "RW": (0.74, 0.88), "LST": (0.84, 0.36), "ST": (0.86, 0.50), "RST": (0.84, 0.64),
+}
+
+def custom_counts(codes) -> dict:
+    out = {}
+    for c in codes:
+        g = SLOT_INFO[c]["group"]
+        out[g] = out.get(g, 0) + 1
+    return out
+
+def custom_problems(codes) -> list:
+    """What is still missing for a playable custom formation (empty list = valid)."""
+    counts, problems = custom_counts(codes), []
+    for g, need in CUSTOM_MIN.items():
+        if counts.get(g, 0) < need:
+            problems.append(f"{CUSTOM_GROUP_NAME[g]}: at least {need}")
+    if len(codes) != 11:
+        problems.append(f"{len(codes)} of 11 players placed")
+    return problems
+
+def register_custom_formation(codes):
+    """Make the user's custom shape available under the name 'Custom' (the formation tables are rebuilt every run)."""
+    ordered = [c for c in CUSTOM_ORDER if c in set(codes)]
+    FORMATION_LAYOUT[CUSTOM_FORMATION] = {c: CUSTOM_COORDS[c] for c in ordered}
+    FORMATIONS[CUSTOM_FORMATION] = ordered
+
+def formation_label(name: str) -> str:
+    """Display name: presets as they are; a custom shape as its preset name if it matches one, else D-M-A."""
+    if name != CUSTOM_FORMATION:
+        return name
+    codes = FORMATIONS.get(CUSTOM_FORMATION, [])
+    for preset in PRESET_FORMATIONS:
+        if set(FORMATIONS[preset]) == set(codes):
+            return f"Custom {preset}"
+    d = sum(1 for c in codes if SLOT_INFO[c]["group"] in ("CB", "FB & WB"))
+    m = sum(1 for c in codes if SLOT_INFO[c]["group"] == "MF" or c in ("LM", "RM"))
+    a = len(codes) - d - m - sum(1 for c in codes if c == "GK")
+    return f"Custom {d}-{m}-{a}"
+
+def formation_fit_key(name: str) -> str:
+    """The preset whose shape a custom formation most resembles (used for the formation part of the style fit)."""
+    if name != CUSTOM_FORMATION:
+        return name
+    codes = FORMATIONS.get(CUSTOM_FORMATION, [])
+    def shape(cs):
+        d = sum(1 for c in cs if SLOT_INFO[c]["group"] in ("CB", "FB & WB"))
+        m = sum(1 for c in cs if SLOT_INFO[c]["group"] == "MF" or c in ("LM", "RM"))
+        return d, m, len([c for c in cs if c != "GK"]) - d - m
+    mine = shape(codes)
+    return min(PRESET_FORMATIONS, key=lambda p: (sum(abs(x - y) for x, y in zip(shape(FORMATIONS[p]), mine)),
+                                                  len(set(FORMATIONS[p]) ^ set(codes))))
 
 def auto_select_xi(squad: pd.DataFrame, formation: str) -> pd.DataFrame:
     slots = slot_labels(formation)
@@ -893,10 +946,11 @@ def play_type_squad_fit(play_type: str, xi: pd.DataFrame, team: str, formation: 
     chosen = {"formation": formation, "mentality": mentality, "tempo": tempo,
               "line": line, "pressing": pressing, "attack": attack_pref, "passing": passing, "stance": stance}
     table = PLAY_TYPE_SETTING_FIT[play_type]
-    scores = {k: table[k].get(v, 0.0) for k, v in chosen.items()}
+    scores = {k: table[k].get(formation_fit_key(v) if k == "formation" else v, 0.0) for k, v in chosen.items()}
     wsum = sum(PLAY_TYPE_SETTING_WEIGHT.values())
     c_set = sum(PLAY_TYPE_SETTING_WEIGHT[k] * s for k, s in scores.items()) / wsum
-    details = [(PLAY_TYPE_SETTING_LABEL[k], chosen[k], _verdict(scores[k])) for k in chosen]
+    details = [(PLAY_TYPE_SETTING_LABEL[k], formation_label(chosen[k]) if k == "formation" else chosen[k],
+                _verdict(scores[k])) for k in chosen]
 
     targets = PLAY_TYPE_ROLE_TARGET[play_type]
     vals = []
@@ -1746,11 +1800,39 @@ STRENGTH_PRIOR = compute_strength_priors(PRED_KEY, tuple(sorted(DF["Team"].uniqu
 TEAM_STRENGTH_DATA.update(STRENGTH_PRIOR["teams"])
 ALL_TEAMS = sorted(DF["Team"].unique().tolist())
 
+# Letter grades replace the raw overall number everywhere it is shown. Cut-offs are percentiles of the whole league,
+# so a grade means the same thing whatever the data: S = top 3%, A = next 12%, B = next 20%, C = next 25%,
+# D = next 20%, E = next 13%, F = bottom 7%.
+GRADES = ["S", "A", "B", "C", "D", "E", "F"]
+GRADE_CUTS = [float(v) for v in np.percentile(DF["OVR"].dropna(), [97, 85, 65, 40, 20, 7])]
+
+def ovr_grade(ovr) -> str:
+    """Letter grade (S-A-B-C-D-E-F) for an overall rating."""
+    try:
+        v = float(ovr)
+    except (TypeError, ValueError):
+        return "-"
+    if v != v:
+        return "-"
+    for letter, cut in zip(GRADES, GRADE_CUTS):
+        if v >= cut:
+            return letter
+    return GRADES[-1]
+
+def add_grade_column(df_view: pd.DataFrame, source: pd.DataFrame) -> pd.DataFrame:
+    """Insert a Grade column (after Position when there is one) computed from the source rows' OVR."""
+    out = df_view.copy()
+    grades = source.loc[out.index, "OVR"].map(ovr_grade)
+    at = out.columns.get_loc("Position") + 1 if "Position" in out.columns else len(out.columns)
+    out.insert(at, "Grade", grades)
+    return out
+
 def init_session():
     ss = st.session_state
     ss.setdefault("season_started", False)
     ss.setdefault("user_team", None)
     ss.setdefault("formation", "4-3-3")
+    ss.setdefault("custom_slots", [])
     ss.setdefault("mentality", "Balanced")
     ss.setdefault("tempo", "Normal")
     ss.setdefault("oop_line", "Medium-block")
@@ -1782,11 +1864,15 @@ def init_session():
 
 init_session()
 ss = st.session_state
+register_custom_formation(ss.custom_slots)
 
 def start_new_season(team: str):
     ss.user_team = team
     ss.season_started = True
     ss.formation = "4-3-3"
+    ss.custom_slots = []
+    ss.pop("custom_slots_select", None)
+    register_custom_formation([])
     ss.mentality = "Balanced"
     ss.tempo = "Normal"
     ss.oop_line = "Medium-block"
@@ -2034,9 +2120,40 @@ def apply_auto_bench():
     starters = {p for p in ss.manual_lineup.values() if p and p != "Select Player"}
     ss["bench_select"] = auto_select_bench(available_squad(), starters)["Player"].tolist()
 
+def formation_is_valid() -> bool:
+    return ss.formation != CUSTOM_FORMATION or not custom_problems(ss.custom_slots)
+
 def is_team_locked() -> bool:
     sig = ss.get("locked_signature")
-    return sig is not None and sig == current_tactics_signature()
+    return sig is not None and formation_is_valid() and sig == current_tactics_signature()
+
+def apply_custom_slots():
+    """Callback of the 'positions in your team' picker: rebuild the slots, keeping the players already placed."""
+    new = [c for c in CUSTOM_ORDER if c in set(ss.get("custom_slots_select", []))]
+    old_lineup, old_roles = dict(ss.manual_lineup), dict(ss.player_roles)
+    keep = {(SLOT_INFO[c]["group"], c) for c in new}
+    for grp, code in list(old_lineup):
+        if (grp, code) not in keep:
+            ss.pop(slot_widget_key(code), None)
+            ss.pop(role_widget_key(code), None)
+    ss.custom_slots = new
+    ss.manual_lineup = {(SLOT_INFO[c]["group"], c): old_lineup.get((SLOT_INFO[c]["group"], c), "Select Player") for c in new}
+    ss.player_roles = {(SLOT_INFO[c]["group"], c): old_roles.get((SLOT_INFO[c]["group"], c), default_role_for(SLOT_INFO[c]["group"])) for c in new}
+    register_custom_formation(new)
+
+def switch_formation(choice: str):
+    """Formation dropdown: a preset starts a fresh XI; 'Custom' starts from the current shape and keeps the players."""
+    if choice == CUSTOM_LABEL:
+        if ss.formation != CUSTOM_FORMATION:
+            ss.custom_slots = list(FORMATIONS[ss.formation])
+            ss["custom_slots_select"] = list(ss.custom_slots)
+            register_custom_formation(ss.custom_slots)
+            ss.formation = CUSTOM_FORMATION          # lineup and roles carry over (same slot keys)
+        return
+    ss.formation = choice
+    ss.manual_lineup = {}
+    ss.player_roles = {}
+    ss.cover = {"slots": {}, "bench": None}
 
 @st.cache_data(show_spinner=False)
 def cached_auto_xi(team: str, formation: str, suspended: tuple = ()) -> pd.DataFrame:
@@ -2273,7 +2390,7 @@ def simulate_to_end():
 # --------------------------------------------------------------------------
 with st.sidebar:
     st.title("⚽ Liga Portugal Manager")
-    st.caption("@TheStatsWay - Liga Portugal 2026/27")
+    st.caption("Liga Portugal 2026/27")
 
     if ss.season_started:
         st.metric("Managing", ss.user_team)
@@ -2282,8 +2399,6 @@ with st.sidebar:
         if st.button("🔄 Restart Game", use_container_width=True):
             reset_all()
             st.rerun()
-
-
 
 # --------------------------------------------------------------------------
 # Main area View Renders
@@ -2353,7 +2468,7 @@ def squad_fit_header_html(formation: str, play_type: str, fit_info) -> str:
     """Heading above the pitch: the formation, and a box with the squad fit for the chosen Type of Play.
     `fit_info` is play_type_squad_fit(...) or None while the XI is incomplete."""
     head_css = "display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px 0;"
-    title = f'<span style="font-size:1.05rem;font-weight:700;">🏟️ {html_lib.escape(formation)} Shape</span>'
+    title = f'<span style="font-size:1.05rem;font-weight:700;">🏟️ {html_lib.escape(formation_label(formation))} Shape</span>'
     box_base = ("display:inline-flex;flex-direction:column;gap:3px;min-width:190px;padding:6px 12px;border-radius:10px;"
                 "background:var(--bg-card);border:1px solid {border};")
     label_css = ("font-family:'Space Mono',monospace;font-size:0.6rem;letter-spacing:0.08em;"
@@ -2692,7 +2807,7 @@ def render_scouting_report(expanded: bool = True):
         with left:
             st.markdown("**Expected setup**")
             rows = [
-                ("Formation", formation, ss.formation),
+                ("Formation", formation_label(formation), formation_label(ss.formation)),
                 ("Type of Play", f"{ptype} ({round(their_fit * 100)}% fit)",
                  f"{ss.play_type} ({round(my_fit * 100)}% fit)" if my_fit is not None else ss.play_type),
                 ("Mentality", ment, ss.mentality),
@@ -2730,14 +2845,14 @@ def render_scouting_report(expanded: bool = True):
         xrows = []
         for _, r in xi.iterrows():
             p = club.loc[r["Player"]] if len(club) and r["Player"] in club.index else None
-            xrows.append({"Pos": r["Label"], "Player": r["Player"], "OVR": round(float(r["OVR"]), 1),
+            xrows.append({"Pos": r["Label"], "Player": r["Player"], "Grade": ovr_grade(r["OVR"]), "_ovr": float(r["OVR"]),
                           "Apps": int(p["Apps"]) if p is not None else 0, "Goals": int(p["Goals"]) if p is not None else 0,
                           "Assists": int(p["Assists"]) if p is not None else 0,
                           "Avg rating": float(p["Rating"]) if p is not None else None})
-        st.dataframe(pd.DataFrame(xrows), hide_index=True, use_container_width=True)
-        threats = sorted(xrows, key=lambda x: (x["Goals"] + x["Assists"], x["OVR"]), reverse=True)[:2]
-        star = max(xrows, key=lambda x: x["OVR"])
-        st.caption(f"Key players: {star['Player']} (best rated in their XI, OVR {star['OVR']:.0f})"
+        st.dataframe(pd.DataFrame(xrows).drop(columns=["_ovr"]), hide_index=True, use_container_width=True)
+        threats = sorted(xrows, key=lambda x: (x["Goals"] + x["Assists"], x["_ovr"]), reverse=True)[:2]
+        star = max(xrows, key=lambda x: x["_ovr"])
+        st.caption(f"Key players: {star['Player']} (best graded in their XI, grade {star['Grade']})"
                    + "".join(f" · {t['Player']} ({t['Goals']} goals, {t['Assists']} assists)" for t in threats if t["Goals"] + t["Assists"] > 0))
         st.caption("This is the plan their manager has picked for this match.")
 
@@ -2772,7 +2887,7 @@ def render_squad_tactics():
     if squad_positions:
         filtered_squad = filtered_squad[filtered_squad["Position"].isin(squad_positions)]
 
-    squad_display = filtered_squad.drop(
+    squad_display = add_grade_column(filtered_squad, filtered_squad).drop(
         columns=["PlayerID", "Team", "OVR", "Season", "League", "season", "league"], 
         errors="ignore"
     )
@@ -2819,13 +2934,27 @@ def render_squad_tactics():
     col_tac, col_pitch, col_sel = st.columns([1.2, 2.5, 2.0], gap="medium")
     with col_tac:
         st.markdown("##### 📋 Tactical Style")
-        new_formation = st.selectbox("Formation", list(FORMATIONS.keys()), index=list(FORMATIONS.keys()).index(ss.formation))
-        if new_formation != ss.formation:
-            ss.formation = new_formation
-            ss.manual_lineup = {}
-            ss.player_roles = {}
-            ss.cover = {"slots": {}, "bench": None}
+        formation_options = PRESET_FORMATIONS + [CUSTOM_LABEL]
+        current_choice = CUSTOM_LABEL if ss.formation == CUSTOM_FORMATION else ss.formation
+        new_choice = st.selectbox("Formation", formation_options, index=formation_options.index(current_choice))
+        if new_choice != current_choice:
+            switch_formation(new_choice)
             st.rerun()
+
+        if ss.formation == CUSTOM_FORMATION:
+            if "custom_slots_select" not in ss:
+                ss["custom_slots_select"] = list(ss.custom_slots)
+            st.multiselect(
+                "Positions in your team", CUSTOM_ORDER, key="custom_slots_select", max_selections=11,
+                format_func=lambda c: f"{c} · {SLOT_INFO[c]['name']}", on_change=apply_custom_slots,
+                help="Add or remove positions to build your own shape. Every shape needs 11 players, with at least "
+                     "1 goalkeeper, 2 centre-backs, 2 full-backs / wing-backs and 1 midfielder.",
+            )
+            counts = custom_counts(ss.custom_slots)
+            checks = [f"{'✅' if counts.get(g, 0) >= need else '❌'} {CUSTOM_GROUP_NAME[g]}: {counts.get(g, 0)} (min {need})"
+                      for g, need in CUSTOM_MIN.items()]
+            checks.append(f"{'✅' if len(ss.custom_slots) == 11 else '❌'} Players: {len(ss.custom_slots)}/11")
+            st.caption("  \n".join(checks))
 
         if "play_type_choice" not in ss:
             ss["play_type_choice"] = ss.play_type
@@ -2875,7 +3004,11 @@ def render_squad_tactics():
                 ss.locked_signature = None
                 st.rerun()
         else:
-            if not all_selected:
+            problems = custom_problems(ss.custom_slots) if ss.formation == CUSTOM_FORMATION else []
+            if problems:
+                st.warning("⚠️ Complete your formation to lock the team: " + " · ".join(problems) + ".")
+                st.button("🔒 Lock Team & Go to Matchday", type="primary", use_container_width=True, disabled=True)
+            elif not all_selected:
                 st.warning("⚠️ Select 11 players to lock your team.")
                 st.button("🔒 Lock Team & Go to Matchday", type="primary", use_container_width=True, disabled=True)
             else:
@@ -2961,7 +3094,7 @@ def render_squad_tactics():
         bench_pool = pool_squad[~pool_squad["Player"].isin(starters_now)].copy()
         bench_pool["_g"] = bench_pool["Position"].map(lambda p: POSITION_ORDER.index(p) if p in POSITION_ORDER else 99)
         bench_pool = bench_pool.sort_values(["_g", "OVR"], ascending=[True, False])
-        bench_info = {r["Player"]: f'{r["Player"]} · {r["Position"]} · {r["OVR"]:.0f}' for _, r in bench_pool.iterrows()}
+        bench_info = {r["Player"]: f'{r["Player"]} · {r["Position"]} · {ovr_grade(r["OVR"])}' for _, r in bench_pool.iterrows()}
         # keep the widget's own state valid (a player promoted into the XI must leave the bench)
         if "bench_select" not in ss:
             ss["bench_select"] = list(ss.bench)
@@ -3147,7 +3280,7 @@ def render_table():
         render_need_season_prompt()
         return
     st.subheader("📊 League Table")
-    st.dataframe(table_dataframe(ss.table), use_container_width=True)
+    st.dataframe(table_dataframe(ss.table), use_container_width=True, hide_index=True)
     
     st.divider()
     st.subheader("🥇 Player Statistics")
@@ -3239,7 +3372,7 @@ def render_player_stats():
         st.warning("No players found matching the selected criteria.")
         return
 
-    df_display = df.drop(
+    df_display = add_grade_column(df, df).drop(
         columns=["PlayerID", "OVR", "Season", "League", "season", "league"], 
         errors="ignore"
     )
@@ -3306,11 +3439,27 @@ def best_player_per_team(players: pd.DataFrame, min_apps: int) -> pd.DataFrame:
 def _ordinal(n: int) -> str:
     return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
+_FONT_DIRS = ["/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu", "/usr/share/fonts/TTF",
+              "/usr/share/fonts/truetype/liberation", "/usr/share/fonts/truetype/noto", "/usr/share/fonts/truetype/freefont",
+              "/Library/Fonts", "/System/Library/Fonts/Supplemental", "/System/Library/Fonts",
+              "C:/Windows/Fonts", "C:\\Windows\\Fonts"]
+
 def _card_font(size: int, bold: bool = False):
+    """A TrueType font with accents (Vitória, Académico...). Searches the usual system folders and matplotlib's bundled
+    DejaVu before falling back to Pillow's built-in font."""
     from PIL import ImageFont
-    names = (["DejaVuSans-Bold.ttf", "Arial Bold.ttf", "arialbd.ttf", "Helvetica-Bold.ttf"] if bold
-             else ["DejaVuSans.ttf", "Arial.ttf", "arial.ttf", "Helvetica.ttf"])
-    for n in names:
+    names = (["DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", "Arial Bold.ttf", "arialbd.ttf", "NotoSans-Bold.ttf"] if bold
+             else ["DejaVuSans.ttf", "LiberationSans-Regular.ttf", "Arial.ttf", "arial.ttf", "NotoSans-Regular.ttf"])
+    candidates = list(names)
+    for folder in _FONT_DIRS:
+        candidates += [f"{folder}/{n}" for n in names]
+    try:
+        import matplotlib
+        mpl_fonts = Path(matplotlib.get_data_path()) / "fonts" / "ttf"
+        candidates += [str(mpl_fonts / n) for n in (["DejaVuSans-Bold.ttf"] if bold else ["DejaVuSans.ttf"])]
+    except Exception:
+        pass
+    for n in candidates:
         try:
             return ImageFont.truetype(n, size)
         except Exception:
@@ -3319,6 +3468,29 @@ def _card_font(size: int, bold: bool = False):
         return ImageFont.load_default(size)
     except Exception:
         return ImageFont.load_default()
+
+def _safe_ascii(text) -> str:
+    """Accents removed (Vitória -> Vitoria). Only used when a font cannot draw them."""
+    return unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode()
+
+_GLYPH_OK = {}
+
+def _font_has_glyph(font, ch: str) -> bool:
+    """True if the font really draws this character (not the empty 'missing glyph' box)."""
+    key = (id(font), ch)
+    if key not in _GLYPH_OK:
+        try:
+            _GLYPH_OK[key] = bytes(font.getmask(ch)) != bytes(font.getmask("\U0010ffff"))
+        except Exception:
+            _GLYPH_OK[key] = False
+    return _GLYPH_OK[key]
+
+def _card_text(font, text) -> str:
+    """The text as it can be drawn: characters the font lacks lose their accent instead of showing as boxes or '?'."""
+    text = str(text)
+    if text.isascii():
+        return text
+    return "".join(ch if ch.isascii() or _font_has_glyph(font, ch) else (_safe_ascii(ch) or "?") for ch in text)
 
 def _short_name(name: str, limit: int = 13) -> str:
     parts = str(name).split()
@@ -3351,9 +3523,9 @@ def _draw_pitch(d, box, xi: pd.DataFrame, formation: str, title: str, subtitle: 
         d.ellipse([px - 17, py - 17, px + 17, py + 17], fill=col, outline=accent if mine else (255, 255, 255), width=3 if mine else 2)
         txt = f"{rating:.1f}" if rating else "-"
         d.text((px, py), txt, font=fonts["tiny_b"], fill=(10, 10, 20), anchor="mm")
-        d.text((px, py + 31), _safe_ascii(_short_name(row["Player"])), font=fonts["tiny_b"], fill=(255, 255, 255), anchor="mm",
+        d.text((px, py + 31), _short_name(row["Player"]), font=fonts["tiny_b"], fill=(255, 255, 255), anchor="mm",
                stroke_width=2, stroke_fill=(10, 40, 24))
-        d.text((px, py + 47), _safe_ascii(str(row["Team"]))[:14], font=fonts["tiny"], fill=(215, 235, 222), anchor="mm",
+        d.text((px, py + 47), str(row["Team"])[:14], font=fonts["tiny"], fill=(215, 235, 222), anchor="mm",
                stroke_width=2, stroke_fill=(10, 40, 24))
 
 def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: str = "4-3-3") -> bytes:
@@ -3376,29 +3548,17 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
             name = covered.get((grp, label), name)
         if name == "Select Player" or name not in squad_pos.index:
             continue
-        
         st_row = by_name.loc[name] if name in by_name.index else None
-        rating = 0.0
-        if st_row is not None:
-            if isinstance(st_row, pd.DataFrame):
-                st_row = st_row.iloc[0]
-            val = st_row["Rating"] if "Rating" in st_row else 0.0
-            if isinstance(val, pd.Series):
-                val = val.iloc[0]
-            try:
-                rating = float(val) if not pd.isna(val) else 0.0
-            except (TypeError, ValueError):
-                rating = 0.0
-
-        rows.append({
-            "Slot": grp, "Label": label, "Player": name, "Team": team, 
-            "Position": squad_pos[name], "Rating": rating
-        })
+        rows.append({"Slot": grp, "Label": label, "Player": name, "Team": team, "Position": squad_pos[name],
+                     "Rating": float(st_row["Rating"]) if st_row is not None else 0.0})
     my_xi = pd.DataFrame(rows, columns=["Slot", "Label", "Player", "Team", "Position", "Rating"])
+
     W, H = 1500, 960
     bg, card, pink, muted = (11, 11, 20), (18, 18, 31), (255, 47, 123), (150, 150, 175)
     img = Image.new("RGB", (W, H), bg)
     d = ImageDraw.Draw(img)
+    _draw_text = d.text
+    d.text = lambda xy, text, *args, font=None, **kw: _draw_text(xy, _card_text(font, text), *args, font=font, **kw)
     fonts = {"h1": _card_font(44, True), "big": _card_font(64, True), "h2": _card_font(24, True), "body": _card_font(18),
              "body_b": _card_font(18, True), "small": _card_font(15), "tiny": _card_font(12), "tiny_b": _card_font(13, True)}
 
@@ -3417,7 +3577,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
     # header
     d.rectangle([0, 0, W, 6], fill=pink)
     d.text((40, 28), "LIGA PORTUGAL MANAGER · SEASON REPORT CARD", font=fonts["small"], fill=pink)
-    d.text((40, 54), _safe_ascii(str(team)), font=fonts["h1"], fill=(255, 255, 255))
+    d.text((40, 54), str(team), font=fonts["h1"], fill=(255, 255, 255))
     if style_line:
         d.rounded_rectangle([40, 108, 40 + int(d.textlength(style_line, font=fonts["body_b"])) + 28, 140], radius=16, fill=card, outline=pink, width=2)
         d.text((54, 124), style_line, font=fonts["body_b"], fill=(255, 255, 255), anchor="lm")
@@ -3451,7 +3611,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
         f = fonts["body_b"] if is_me else fonts["body"]
         c = (255, 255, 255) if is_me else (205, 205, 220)
         d.text((tx0 + 14, y + 2), str(p), font=f, fill=c)
-        d.text((tx0 + 52, y + 2), _safe_ascii(str(r["Team"]))[:24], font=f, fill=c)
+        d.text((tx0 + 52, y + 2), str(r["Team"])[:24], font=f, fill=c)
         d.text((tx0 + 330, y + 2), str(int(r["P"])), font=f, fill=c, anchor="ra")
         d.text((tx0 + 400, y + 2), f"{int(r['GD']):+d}", font=f, fill=c, anchor="ra")
         d.text((tx0 + 490, y + 2), str(int(r["Pts"])), font=fonts["body_b"], fill=c, anchor="ra")
@@ -3470,7 +3630,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
     _draw_pitch(d, (610, py0, 610 + pw, py0 + ph), tos, tos_formation, "Team of the Season",
                 f"Best XI of the league · {tos_formation}", (250, 204, 21), fonts)
     _draw_pitch(d, (1060, py0, 1060 + pw, py0 + ph), my_xi, ss.formation, f"{team}'s Starting XI",
-                f"Your lineup from Squad & Tactics · {ss.formation}", pink, fonts)
+                f"Your lineup from Squad & Tactics · {formation_label(ss.formation)}", pink, fonts)
 
     # key facts strip
     fy = py0 + ph + 28
@@ -3486,7 +3646,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
         d.text((fx + 14, fy + 10), label.upper(), font=fonts["tiny"], fill=muted)
         d.text((fx + 14, fy + 32), val[:26], font=fonts["body_b"], fill=(255, 255, 255))
         fx += 285
-    d.text((W - 40, H - 28), "@TheStatsWay", font=fonts["tiny"], fill=muted, anchor="ra")
+    d.text((W - 40, H - 28), "Made with Liga Portugal Manager", font=fonts["tiny"], fill=muted, anchor="ra")
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -3595,7 +3755,7 @@ def render_awards():
 
     st.divider()
     st.markdown("### ⭐ Team of the Season")
-    formations = list(FORMATIONS.keys())
+    formations = PRESET_FORMATIONS
     formation = st.selectbox("Formation", formations, index=formations.index("4-3-3"), key="awards_formation")
     tos = pick_team_of_season(players, formation, min_apps)
 
