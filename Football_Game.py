@@ -2390,7 +2390,7 @@ def simulate_to_end():
 # --------------------------------------------------------------------------
 with st.sidebar:
     st.title("⚽ Liga Portugal Manager")
-    st.caption("Liga Portugal 2026/27")
+    st.caption("@TheStatsWay - Liga Portugal 2026/27")
 
     if ss.season_started:
         st.metric("Managing", ss.user_team)
@@ -3646,7 +3646,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
         d.text((fx + 14, fy + 10), label.upper(), font=fonts["tiny"], fill=muted)
         d.text((fx + 14, fy + 32), val[:26], font=fonts["body_b"], fill=(255, 255, 255))
         fx += 285
-    d.text((W - 40, H - 28), "Made with Liga Portugal Manager", font=fonts["tiny"], fill=muted, anchor="ra")
+    d.text((W - 40, H - 28), "@TheStatsWay - Liga Portugal Manager", font=fonts["tiny"], fill=muted, anchor="ra")
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
