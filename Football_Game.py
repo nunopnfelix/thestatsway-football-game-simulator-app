@@ -1867,6 +1867,7 @@ ss = st.session_state
 register_custom_formation(ss.custom_slots)
 
 def start_new_season(team: str):
+    ss.manager_saved = (ss.get("manager_name") or "").strip()      # the text box disappears with the start page
     ss.user_team = team
     ss.season_started = True
     ss.formation = "4-3-3"
@@ -1900,6 +1901,7 @@ def start_new_season(team: str):
     ss.scorers = {}
     ss.assists = {}
     ss.history = []
+    ss.season_logged = False
     ss.last_commentary = None
     ss.player_ratings_sum = {}
     ss.player_ratings_count = {}
@@ -2332,8 +2334,23 @@ def play_fixture(home, away, rng):
             home_reds, away_reds
         )
 
+    user_match = None
+    if ss.user_team in (home, away):
+        is_home = home == ss.user_team
+        mine, theirs = ("home", "away") if is_home else ("away", "home")
+        my_events = home_events if is_home else away_events
+        user_match = {
+            "formation": formation_label(ss.formation), "mentality": ss.mentality, "tempo": ss.tempo, "line": ss.oop_line,
+            "press": ss.pressing, "passing": ss.passing_style, "stance": ss.def_stance, "attack_pref": ss.attack_pref,
+            "play_type": home_type if is_home else away_type, "fit": home_fit if is_home else away_fit,
+            "xg_for": result[f"xg_{mine}"], "xg_against": result[f"xg_{theirs}"],
+            "possession": result["possession_home"] if is_home else 100 - result["possession_home"],
+            "yellows": result[f"stats_{mine}"].get("yellow_cards", 0), "reds": result[f"stats_{mine}"].get("red_cards", 0),
+            "scorers": [(e["minute"], e["scorer"]) for e in my_events],
+        }
     ss.history.append({
         "round": ss.matchday + 1, "home": home, "away": away,
+        "user_match": user_match,
         "hg": result["home_goals"], "ag": result["away_goals"],
         "is_user": ss.user_team in (home, away),
         "user_style": ((home_type, home_fit) if home == ss.user_team else (away_type, away_fit)) if ss.user_team in (home, away) else None,
@@ -2380,6 +2397,8 @@ def play_next_matchday(auto_fix: bool = False):
     else:
         ss.last_commentary = None
     ss.matchday += 1
+    if ss.matchday >= len(ss.schedule):
+        log_finished_season()
 
 def simulate_to_end():
     while ss.matchday < len(ss.schedule):
@@ -2390,7 +2409,7 @@ def simulate_to_end():
 # --------------------------------------------------------------------------
 with st.sidebar:
     st.title("⚽ Liga Portugal Manager")
-    st.caption("@TheStatsWay - Liga Portugal 2026/27")
+    st.caption("Liga Portugal 2026/27")
 
     if ss.season_started:
         st.metric("Managing", ss.user_team)
@@ -2399,6 +2418,15 @@ with st.sidebar:
         if st.button("🔄 Restart Game", use_container_width=True):
             reset_all()
             st.rerun()
+
+    st.divider()
+    st.caption("📒 **Results log.** When a season ends, its final result is saved to a results file: your club, final "
+               "position, tactics, match results, goal-scorers and your manager name if you entered one.")
+    if ss.get("season_started") and ss.matchday >= len(ss.schedule):
+        if ss.get("season_log_saved"):
+            st.success("Your season has been saved to the results log.", icon="✅")
+        elif ss.get("season_log_saved") is False:
+            st.warning("Your season could not be saved to the results log.", icon="⚠️")
 
 # --------------------------------------------------------------------------
 # Main area View Renders
@@ -2449,6 +2477,8 @@ No transfer market — you manage exactly the players your club already has.</p>
     if not ss.season_started:
         st.subheader("🏁 Start Your Career")
         st.markdown("Select a club below to begin managing.")
+        st.text_input("Your manager name (optional, saved with your season in the results log)", key="manager_name",
+                      max_chars=40, placeholder="e.g. Nuno")
 
         teams = ALL_TEAMS[:]
         for i in range(0, len(teams), 3):
@@ -3646,7 +3676,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
         d.text((fx + 14, fy + 10), label.upper(), font=fonts["tiny"], fill=muted)
         d.text((fx + 14, fy + 32), val[:26], font=fonts["body_b"], fill=(255, 255, 255))
         fx += 285
-    d.text((W - 40, H - 28), "@TheStatsWay - Liga Portugal Manager", font=fonts["tiny"], fill=muted, anchor="ra")
+    d.text((W - 40, H - 28), "Made with Liga Portugal Manager", font=fonts["tiny"], fill=muted, anchor="ra")
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -3712,6 +3742,8 @@ def render_awards():
     min_apps = max(1, round(0.45 * ss.matchday))
     if season_over:
         st.success("🎉 The season is over. These are the final awards.")
+        if ss.get("season_log_saved"):
+            st.caption(f"📒 Your season was added to the results log (`{SEASON_LOG_PATH.name}`).")
     else:
         st.info(f"Provisional awards after matchday {ss.matchday} of {total}. The final awards are decided when the season ends.")
     st.caption(f"Eligible players: at least {min_apps} appearances. If a position or club has no eligible player, "
@@ -3782,6 +3814,240 @@ def render_awards():
 
     st.dataframe(best_df.style.apply(highlight_user, axis=1).format({"Rating": "{:.2f}"}),
                  hide_index=True, use_container_width=True)
+
+# --------------------------------------------------------------------------
+# Results log: every finished season is appended to an Excel file (one file for everybody who plays this app)
+# --------------------------------------------------------------------------
+import os
+import time
+import uuid
+from datetime import datetime, timezone
+
+SEASON_LOG_PATH = Path(os.environ.get("FOOTBALL_LOG_PATH") or (Path(__file__).resolve().parent / "season_log.xlsx"))
+LOG_SHEETS = {
+    "Seasons": ["Season ID", "Finished (UTC)", "Player session", "Manager", "Club", "Final position", "Champion", "Pts", "P", "W", "D", "L",
+                "GF", "GA", "GD", "Expected rank (pre-season)", "Places vs expectation", "Main formation", "Main style of play",
+                "Style: matches used", "Avg squad fit %", "Main mentality", "Main tempo", "Main defensive line", "Main pressing",
+                "Main passing", "Main defensive stance", "Main attacking preference", "Avg xG for", "Avg xG against",
+                "Avg possession %", "Yellow cards", "Red cards", "Top scorer (club)", "Top scorer goals", "Best player (avg rating)",
+                "Best player rating", "Tactic changes during season"],
+    "Matches": ["Season ID", "Club", "Matchday", "Venue", "Opponent", "Result", "GF", "GA", "Score", "Formation", "Mentality",
+                "Tempo", "Defensive line", "Pressing", "Passing", "Defensive stance", "Attacking preference", "Type of play",
+                "Squad fit %", "xG for", "xG against", "Possession %", "Yellow cards", "Red cards", "Club scorers"],
+    "Scorers": ["Season ID", "Club (user)", "Player", "Team", "Position", "Apps", "Goals", "Assists", "Avg rating", "Own club?"],
+    "Lineups": ["Season ID", "Club (user)", "Formation", "Slot", "Player", "Position", "Role", "Apps", "Goals", "Assists", "Avg rating"],
+    "Final table": ["Season ID", "Pos", "Team", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "User club?"],
+}
+
+def _mode(values):
+    values = [v for v in values if v not in (None, "")]
+    if not values:
+        return ""
+    return max(sorted(set(values)), key=values.count)
+
+def _acquire_log_lock(lock_path: Path, timeout: float = 20.0) -> bool:
+    """A tiny cross-process lock (lock file created exclusively); a lock older than a minute is considered stale."""
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
+            return True
+        except FileExistsError:
+            try:
+                if time.time() - lock_path.stat().st_mtime > 60:
+                    lock_path.unlink()
+                    continue
+            except OSError:
+                pass
+            time.sleep(0.2)
+        except OSError:
+            return False
+    return False
+
+def _build_insights_sheet(wb):
+    """An 'Insights' sheet made of live formulas over the 'Seasons' sheet: results by tactic, style and club."""
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+    ws = wb.create_sheet("Insights", 0)
+    head = LOG_SHEETS["Seasons"]
+    col = lambda name: f"Seasons!${get_column_letter(head.index(name) + 1)}:${get_column_letter(head.index(name) + 1)}"
+    pos, pts, champ, club = col("Final position"), col("Pts"), col("Champion"), col("Club")
+    bold, pink = Font(bold=True), PatternFill("solid", fgColor="FF2F7B")
+    white = Font(bold=True, color="FFFFFF")
+
+    ws["A1"] = "Season results log: insights"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = "Every figure is a live formula over the 'Seasons' sheet, so it updates as new seasons are added."
+    ws["A4"], ws["B4"] = "Seasons logged", f"=COUNTA({col('Season ID')})-1"
+    ws["A5"], ws["B5"] = "Average final position", f'=IFERROR(AVERAGE({pos}),"")'
+    ws["A6"], ws["B6"] = "Titles won", f'=COUNTIF({champ},"Yes")'
+    ws["A7"], ws["B7"] = "Average points", f'=IFERROR(AVERAGE({pts}),"")'
+    ws["A8"], ws["B8"] = "Average goals scored / against", f'=IFERROR(ROUND(AVERAGE({col("GF")}),1)&" / "&ROUND(AVERAGE({col("GA")}),1),"")'
+    for r in range(4, 9):
+        ws.cell(row=r, column=1).font = bold
+        ws.cell(row=r, column=2).alignment = Alignment(horizontal="left")
+
+    blocks = [("Main style of play", "Main style of play", PLAY_TYPE_NAMES),
+              ("Main formation", "Main formation", PRESET_FORMATIONS + ["Custom*"]),
+              ("Main mentality", "Main mentality", MENTALITIES), ("Main tempo", "Main tempo", TEMPOS),
+              ("Main defensive line", "Main defensive line", OOP_LINES), ("Main pressing", "Main pressing", PRESS_TYPES),
+              ("Main passing", "Main passing", PASSING_STYLES), ("Main defensive stance", "Main defensive stance", DEFENSIVE_STANCES),
+              ("Main attacking preference", "Main attacking preference", ATTACK_PREFS),
+              ("Club", "Club", list(ALL_TEAMS))]
+    row = 10
+    for title, header_name, options in blocks:
+        key = col(header_name)
+        ws.cell(row=row, column=1, value=f"By {title.lower()}").font = Font(bold=True, size=12)
+        row += 1
+        for i, h in enumerate([title, "Seasons", "Avg points", "Avg position", "Best finish", "Titles", "Avg GF", "Avg GA"], 1):
+            c = ws.cell(row=row, column=i, value=h)
+            c.font, c.fill, c.alignment = white, pink, Alignment(horizontal="center")
+        row += 1
+        for opt in options:
+            a = f"$A{row}"
+            ws.cell(row=row, column=1, value=opt)
+            ws.cell(row=row, column=2, value=f"=COUNTIF({key},{a})")
+            ws.cell(row=row, column=3, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{pts}),1),"")')
+            ws.cell(row=row, column=4, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{pos}),1),"")')
+            ws.cell(row=row, column=5, value=f'=IF(B{row}=0,"",_xlfn.MINIFS({pos},{key},{a}))')
+            ws.cell(row=row, column=6, value=f'=COUNTIFS({key},{a},{champ},"Yes")')
+            ws.cell(row=row, column=7, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{col("GF")}),1),"")')
+            ws.cell(row=row, column=8, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{col("GA")}),1),"")')
+            row += 1
+        row += 1
+    ws.column_dimensions["A"].width = 34
+    for letter in "BCDEFGH":
+        ws.column_dimensions[letter].width = 14
+
+def _append_rows_to_log(rows_by_sheet: dict) -> bool:
+    """Append rows to the Excel log (created with formatted headers the first time). Returns True when saved."""
+    from openpyxl import Workbook, load_workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    path = SEASON_LOG_PATH
+    lock = path.with_name(path.name + ".lock")
+    if not _acquire_log_lock(lock):
+        return False
+    try:
+        if path.exists():
+            wb = load_workbook(path)
+        else:
+            wb = Workbook()
+            wb.remove(wb.active)
+        for sheet, header in LOG_SHEETS.items():
+            if sheet not in wb.sheetnames:
+                ws = wb.create_sheet(sheet)
+                ws.append(header)
+                for i, _ in enumerate(header, 1):
+                    c = ws.cell(row=1, column=i)
+                    c.font = Font(bold=True, color="FFFFFF")
+                    c.fill = PatternFill("solid", fgColor="FF2F7B")
+                    c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    ws.column_dimensions[get_column_letter(i)].width = max(11, min(34, len(header[i - 1]) + 3))
+                ws.row_dimensions[1].height = 34
+                ws.freeze_panes = "A2"
+        if "Insights" not in wb.sheetnames:
+            _build_insights_sheet(wb)
+        for sheet, rows in rows_by_sheet.items():
+            ws = wb[sheet]
+            for row in rows:
+                ws.append(row)
+            ws.auto_filter.ref = ws.dimensions
+        tmp = path.with_name(path.name + ".tmp")
+        wb.save(tmp)
+        os.replace(tmp, path)
+        return True
+    finally:
+        try:
+            lock.unlink()
+        except OSError:
+            pass
+
+def log_finished_season():
+    """Called once when the last matchday has been played. Never lets a logging problem reach the game."""
+    if ss.get("season_logged"):
+        return
+    ss.season_logged = True
+    try:
+        if "session_id" not in ss:
+            ss["session_id"] = uuid.uuid4().hex[:8]
+        team = ss.user_team
+        standings = table_dataframe(ss.table)
+        pos = int(standings.index[standings["Team"] == team][0])
+        me = standings[standings["Team"] == team].iloc[0]
+        stamp = datetime.now(timezone.utc)
+        season_id = f"{stamp:%Y%m%d-%H%M%S}-{ss['session_id']}"
+
+        matches = [h for h in ss.history if h.get("user_match")]
+        um = [h["user_match"] for h in matches]
+        players = season_player_table()
+        mine = players[players["Team"] == team]
+        best = _rank_by_performance(mine).iloc[0] if len(mine) else None
+        boot = mine.sort_values(["Goals", "Assists", "Rating"], ascending=False).iloc[0] if len(mine) else None
+        exp = TEAM_STRENGTH_DATA.get(team, {}).get("exp_rank")
+        style = _mode([m["play_type"] for m in um])
+        changes = sum(1 for a, b in zip(um, um[1:]) if any(a[k] != b[k] for k in
+                      ("formation", "mentality", "tempo", "line", "press", "passing", "stance", "attack_pref", "play_type")))
+        n = max(1, len(um))
+        season_row = [
+            season_id, stamp.strftime("%Y-%m-%d %H:%M:%S"), ss["session_id"], ss.get("manager_saved", ""), team, pos, "Yes" if pos == 1 else "No",
+            int(me["Pts"]), int(me["P"]), int(me["W"]), int(me["D"]), int(me["L"]), int(me["GF"]), int(me["GA"]), int(me["GD"]),
+            float(exp) if exp else "", (round(exp) - pos) if exp else "",
+            _mode([m["formation"] for m in um]), style, sum(1 for m in um if m["play_type"] == style),
+            round(100 * sum(m["fit"] for m in um) / n, 1),
+            _mode([m["mentality"] for m in um]), _mode([m["tempo"] for m in um]), _mode([m["line"] for m in um]),
+            _mode([m["press"] for m in um]), _mode([m["passing"] for m in um]), _mode([m["stance"] for m in um]),
+            _mode([m["attack_pref"] for m in um]),
+            round(sum(m["xg_for"] for m in um) / n, 2), round(sum(m["xg_against"] for m in um) / n, 2),
+            round(sum(m["possession"] for m in um) / n, 1), sum(m["yellows"] for m in um), sum(m["reds"] for m in um),
+            boot["Player"] if boot is not None else "", int(boot["Goals"]) if boot is not None else "",
+            best["Player"] if best is not None else "", float(best["Rating"]) if best is not None else "", changes,
+        ]
+
+        match_rows = []
+        for h in matches:
+            m = h["user_match"]
+            home = h["home"] == team
+            gf, ga = (h["hg"], h["ag"]) if home else (h["ag"], h["hg"])
+            match_rows.append([
+                season_id, team, h["round"], "Home" if home else "Away", h["away"] if home else h["home"],
+                "W" if gf > ga else "D" if gf == ga else "L", gf, ga, f"{gf}-{ga}", m["formation"], m["mentality"], m["tempo"],
+                m["line"], m["press"], m["passing"], m["stance"], m["attack_pref"], m["play_type"], round(100 * m["fit"], 1),
+                m["xg_for"], m["xg_against"], round(m["possession"], 1), m["yellows"], m["reds"],
+                ", ".join(f"{p} {minute}'" for minute, p in sorted(m["scorers"])),
+            ])
+
+        top = players.sort_values(["Goals", "Assists", "Rating"], ascending=False).head(10)
+        scorer_pool = pd.concat([mine, top]).drop_duplicates("Player")
+        scorer_rows = [[season_id, team, r["Player"], r["Team"], r["Position"], int(r["Apps"]), int(r["Goals"]), int(r["Assists"]),
+                        float(r["Rating"]), "Yes" if r["Team"] == team else "No"]
+                       for _, r in scorer_pool.sort_values(["Goals", "Assists"], ascending=False).iterrows()]
+        table_rows = [[season_id, int(p), r["Team"], int(r["P"]), int(r["W"]), int(r["D"]), int(r["L"]), int(r["GF"]), int(r["GA"]),
+                       int(r["GD"]), int(r["Pts"]), "Yes" if r["Team"] == team else "No"] for p, r in standings.iterrows()]
+
+        by_name = players.set_index("Player")
+        covered = (ss.get("cover") or {}).get("slots", {})
+        lineup_rows = []
+        for (grp, code), name in ss.manual_lineup.items():
+            name = covered.get((grp, code), name) if name == "Select Player" else name
+            if name == "Select Player":
+                continue
+            st_row = by_name.loc[name] if name in by_name.index else None
+            lineup_rows.append([season_id, team, formation_label(ss.formation), code, name,
+                                DF.loc[(DF["Team"] == team) & (DF["Player"] == name), "Position"].iloc[0]
+                                if ((DF["Team"] == team) & (DF["Player"] == name)).any() else "",
+                                ss.player_roles.get((grp, code), ""),
+                                int(st_row["Apps"]) if st_row is not None else 0, int(st_row["Goals"]) if st_row is not None else 0,
+                                int(st_row["Assists"]) if st_row is not None else 0,
+                                float(st_row["Rating"]) if st_row is not None else ""])
+
+        ss.season_log_saved = _append_rows_to_log({"Seasons": [season_row], "Matches": match_rows, "Scorers": scorer_rows,
+                                                   "Lineups": lineup_rows, "Final table": table_rows})
+    except Exception as exc:                       # logging must never break the game
+        ss.season_log_saved = False
+        ss.season_log_error = str(exc)
 
 # --------------------------------------------------------------------------
 # Main Page Router
