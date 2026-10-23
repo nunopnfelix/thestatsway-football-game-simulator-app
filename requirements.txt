@@ -9,3 +9,5 @@ seaborn
 scikit-learn
 lightgbm 
 openpyxl
+sqlalchemy
+psycopg2-binary
