@@ -12,6 +12,8 @@ import streamlit as st
 from pathlib import Path
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
+import sqlalchemy
+import psycopg2
 
 try:  # small DataFrames are much faster with plain Python strings than with pyarrow-backed ones
     pd.options.mode.string_storage = "python"
@@ -3960,10 +3962,21 @@ def _append_rows_to_log(rows_by_sheet: dict) -> bool:
         os.replace(tmp, path)
         return True
     finally:
-        try:
-            lock.unlink()
-        except OSError:
-            pass
+        from sqlalchemy import create_engine
+
+        @st.cache_resource
+        def get_engine():
+            return create_engine(st.secrets["db"]["url"], pool_pre_ping=True)
+
+        def _append_rows_to_log(rows_by_sheet: dict) -> bool:
+            engine = get_engine()
+            with engine.begin() as conn:          # one transaction: all tables saved, or none
+                for sheet, rows in rows_by_sheet.items():
+                    if not rows:
+                        continue
+                    df = pd.DataFrame(rows, columns=LOG_SHEETS[sheet]).replace({"": None})
+                    df.to_sql(sheet.lower().replace(" ", "_"), conn, if_exists="append", index=False)
+            return True
 
 def log_finished_season():
     """Called once when the last matchday has been played. Never lets a logging problem reach the game."""
