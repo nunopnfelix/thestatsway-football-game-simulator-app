@@ -12,8 +12,6 @@ import streamlit as st
 from pathlib import Path
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
-import sqlalchemy
-import psycopg2
 
 try:  # small DataFrames are much faster with plain Python strings than with pyarrow-backed ones
     pd.options.mode.string_storage = "python"
@@ -627,7 +625,7 @@ def lineup_from_manual(squad: pd.DataFrame, assignments: dict, formation: str) -
             "OOP": False
         })
         
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=["Slot", "Label", "Player", "Position", "OVR", "OOP"])
 
 # --------------------------------------------------------------------------
 # 3. Match engine
@@ -1866,6 +1864,10 @@ def init_session():
 
 init_session()
 ss = st.session_state
+if ss.formation == CUSTOM_FORMATION and not ss.custom_slots:      # an empty custom shape has no slots: back to a preset
+    ss.formation = "4-3-3"
+    ss.manual_lineup = {}
+    ss.player_roles = {}
 register_custom_formation(ss.custom_slots)
 
 def start_new_season(team: str):
@@ -1904,6 +1906,8 @@ def start_new_season(team: str):
     ss.assists = {}
     ss.history = []
     ss.season_logged = False
+    ss.pop("season_log_saved", None)
+    ss.pop("season_log_error", None)
     ss.last_commentary = None
     ss.player_ratings_sum = {}
     ss.player_ratings_count = {}
@@ -2429,6 +2433,8 @@ with st.sidebar:
             st.success("Your season has been saved to the results log.", icon="✅")
         elif ss.get("season_log_saved") is False:
             st.warning("Your season could not be saved to the results log.", icon="⚠️")
+            if ss.get("season_log_error"):
+                st.code(ss.season_log_error, language=None)
 
 # --------------------------------------------------------------------------
 # Main area View Renders
@@ -3234,6 +3240,8 @@ def render_play():
         if st.button("🏆 See the Team of the Season", key="goto_awards"):
             ss.page = "awards"
             st.rerun()
+        if ss.get("season_log_saved") is False:
+            render_log_retry()
         if ss.recent_match_ratings:
             st.markdown("#### 📊 Final Match Ratings")
             ratings_df = pd.DataFrame(ss.recent_match_ratings)
@@ -3745,7 +3753,9 @@ def render_awards():
     if season_over:
         st.success("🎉 The season is over. These are the final awards.")
         if ss.get("season_log_saved"):
-            st.caption(f"📒 Your season was added to the results log (`{SEASON_LOG_PATH.name}`).")
+            st.caption("📒 Your season was added to the results log.")
+        else:
+            render_log_retry()
     else:
         st.info(f"Provisional awards after matchday {ss.matchday} of {total}. The final awards are decided when the season ends.")
     st.caption(f"Eligible players: at least {min_apps} appearances. If a position or club has no eligible player, "
@@ -3821,11 +3831,9 @@ def render_awards():
 # Results log: every finished season is appended to an Excel file (one file for everybody who plays this app)
 # --------------------------------------------------------------------------
 import os
-import time
 import uuid
 from datetime import datetime, timezone
 
-SEASON_LOG_PATH = Path(os.environ.get("FOOTBALL_LOG_PATH") or (Path(__file__).resolve().parent / "season_log.xlsx"))
 LOG_SHEETS = {
     "Seasons": ["Season ID", "Finished (UTC)", "Player session", "Manager", "Club", "Final position", "Champion", "Pts", "P", "W", "D", "L",
                 "GF", "GA", "GD", "Expected rank (pre-season)", "Places vs expectation", "Main formation", "Main style of play",
@@ -3847,142 +3855,41 @@ def _mode(values):
         return ""
     return max(sorted(set(values)), key=values.count)
 
-def _acquire_log_lock(lock_path: Path, timeout: float = 20.0) -> bool:
-    """A tiny cross-process lock (lock file created exclusively); a lock older than a minute is considered stale."""
-    start = time.time()
-    while time.time() - start < timeout:
-        try:
-            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            os.close(fd)
-            return True
-        except FileExistsError:
-            try:
-                if time.time() - lock_path.stat().st_mtime > 60:
-                    lock_path.unlink()
-                    continue
-            except OSError:
-                pass
-            time.sleep(0.2)
-        except OSError:
-            return False
-    return False
+def _db_name(text: str) -> str:
+    """Excel-style header -> clean Postgres column / table name ('Final position' -> 'final_position')."""
+    return re.sub(r"[^a-z0-9]+", "_", str(text).lower()).strip("_")
 
-def _build_insights_sheet(wb):
-    """An 'Insights' sheet made of live formulas over the 'Seasons' sheet: results by tactic, style and club."""
-    from openpyxl.styles import Alignment, Font, PatternFill
-    from openpyxl.utils import get_column_letter
-    ws = wb.create_sheet("Insights", 0)
-    head = LOG_SHEETS["Seasons"]
-    col = lambda name: f"Seasons!${get_column_letter(head.index(name) + 1)}:${get_column_letter(head.index(name) + 1)}"
-    pos, pts, champ, club = col("Final position"), col("Pts"), col("Champion"), col("Club")
-    bold, pink = Font(bold=True), PatternFill("solid", fgColor="FF2F7B")
-    white = Font(bold=True, color="FFFFFF")
-
-    ws["A1"] = "Season results log: insights"
-    ws["A1"].font = Font(bold=True, size=14)
-    ws["A2"] = "Every figure is a live formula over the 'Seasons' sheet, so it updates as new seasons are added."
-    ws["A4"], ws["B4"] = "Seasons logged", f"=COUNTA({col('Season ID')})-1"
-    ws["A5"], ws["B5"] = "Average final position", f'=IFERROR(AVERAGE({pos}),"")'
-    ws["A6"], ws["B6"] = "Titles won", f'=COUNTIF({champ},"Yes")'
-    ws["A7"], ws["B7"] = "Average points", f'=IFERROR(AVERAGE({pts}),"")'
-    ws["A8"], ws["B8"] = "Average goals scored / against", f'=IFERROR(ROUND(AVERAGE({col("GF")}),1)&" / "&ROUND(AVERAGE({col("GA")}),1),"")'
-    for r in range(4, 9):
-        ws.cell(row=r, column=1).font = bold
-        ws.cell(row=r, column=2).alignment = Alignment(horizontal="left")
-
-    blocks = [("Main style of play", "Main style of play", PLAY_TYPE_NAMES),
-              ("Main formation", "Main formation", PRESET_FORMATIONS + ["Custom*"]),
-              ("Main mentality", "Main mentality", MENTALITIES), ("Main tempo", "Main tempo", TEMPOS),
-              ("Main defensive line", "Main defensive line", OOP_LINES), ("Main pressing", "Main pressing", PRESS_TYPES),
-              ("Main passing", "Main passing", PASSING_STYLES), ("Main defensive stance", "Main defensive stance", DEFENSIVE_STANCES),
-              ("Main attacking preference", "Main attacking preference", ATTACK_PREFS),
-              ("Club", "Club", list(ALL_TEAMS))]
-    row = 10
-    for title, header_name, options in blocks:
-        key = col(header_name)
-        ws.cell(row=row, column=1, value=f"By {title.lower()}").font = Font(bold=True, size=12)
-        row += 1
-        for i, h in enumerate([title, "Seasons", "Avg points", "Avg position", "Best finish", "Titles", "Avg GF", "Avg GA"], 1):
-            c = ws.cell(row=row, column=i, value=h)
-            c.font, c.fill, c.alignment = white, pink, Alignment(horizontal="center")
-        row += 1
-        for opt in options:
-            a = f"$A{row}"
-            ws.cell(row=row, column=1, value=opt)
-            ws.cell(row=row, column=2, value=f"=COUNTIF({key},{a})")
-            ws.cell(row=row, column=3, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{pts}),1),"")')
-            ws.cell(row=row, column=4, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{pos}),1),"")')
-            ws.cell(row=row, column=5, value=f'=IF(B{row}=0,"",_xlfn.MINIFS({pos},{key},{a}))')
-            ws.cell(row=row, column=6, value=f'=COUNTIFS({key},{a},{champ},"Yes")')
-            ws.cell(row=row, column=7, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{col("GF")}),1),"")')
-            ws.cell(row=row, column=8, value=f'=IFERROR(ROUND(AVERAGEIF({key},{a},{col("GA")}),1),"")')
-            row += 1
-        row += 1
-    ws.column_dimensions["A"].width = 34
-    for letter in "BCDEFGH":
-        ws.column_dimensions[letter].width = 14
+@st.cache_resource
+def get_engine():
+    """One connection pool for the whole app. The URL lives in Streamlit secrets: [db] url = "postgresql+psycopg2://..." """
+    from sqlalchemy import create_engine
+    return create_engine(st.secrets["db"]["url"], pool_pre_ping=True)
 
 def _append_rows_to_log(rows_by_sheet: dict) -> bool:
-    """Append rows to the Excel log (created with formatted headers the first time). Returns True when saved."""
-    from openpyxl import Workbook, load_workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
-    from openpyxl.utils import get_column_letter
-
-    path = SEASON_LOG_PATH
-    lock = path.with_name(path.name + ".lock")
-    if not _acquire_log_lock(lock):
-        return False
-    try:
-        if path.exists():
-            wb = load_workbook(path)
-        else:
-            wb = Workbook()
-            wb.remove(wb.active)
-        for sheet, header in LOG_SHEETS.items():
-            if sheet not in wb.sheetnames:
-                ws = wb.create_sheet(sheet)
-                ws.append(header)
-                for i, _ in enumerate(header, 1):
-                    c = ws.cell(row=1, column=i)
-                    c.font = Font(bold=True, color="FFFFFF")
-                    c.fill = PatternFill("solid", fgColor="FF2F7B")
-                    c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                    ws.column_dimensions[get_column_letter(i)].width = max(11, min(34, len(header[i - 1]) + 3))
-                ws.row_dimensions[1].height = 34
-                ws.freeze_panes = "A2"
-        if "Insights" not in wb.sheetnames:
-            _build_insights_sheet(wb)
+    """Append the season to the Supabase / Postgres tables (created on the first save). All tables or none."""
+    engine = get_engine()
+    with engine.begin() as conn:
         for sheet, rows in rows_by_sheet.items():
-            ws = wb[sheet]
-            for row in rows:
-                ws.append(row)
-            ws.auto_filter.ref = ws.dimensions
-        tmp = path.with_name(path.name + ".tmp")
-        wb.save(tmp)
-        os.replace(tmp, path)
-        return True
-    finally:
-        from sqlalchemy import create_engine
+            if not rows:
+                continue
+            df = pd.DataFrame(rows, columns=[_db_name(c) for c in LOG_SHEETS[sheet]]).astype(object)
+            df = df.where(df.ne(""), None)                      # empty text -> NULL
+            df.to_sql(_db_name(sheet), conn, if_exists="append", index=False)
+    return True
 
-        @st.cache_resource
-        def get_engine():
-            return create_engine(st.secrets["db"]["url"], pool_pre_ping=True)
-
-        def _append_rows_to_log(rows_by_sheet: dict) -> bool:
-            engine = get_engine()
-            with engine.begin() as conn:          # one transaction: all tables saved, or none
-                for sheet, rows in rows_by_sheet.items():
-                    if not rows:
-                        continue
-                    df = pd.DataFrame(rows, columns=LOG_SHEETS[sheet]).replace({"": None})
-                    df.to_sql(sheet.lower().replace(" ", "_"), conn, if_exists="append", index=False)
-            return True
+def render_log_retry():
+    """Retry button for a failed save (the season is still in memory)."""
+    if st.button("🔁 Retry saving my season", key=f"retry_log_{ss.get('page')}"):
+        ss.season_logged = False
+        log_finished_season()
+        st.rerun()
 
 def log_finished_season():
     """Called once when the last matchday has been played. Never lets a logging problem reach the game."""
     if ss.get("season_logged"):
         return
     ss.season_logged = True
+    ss.pop("season_log_error", None)
     try:
         if "session_id" not in ss:
             ss["session_id"] = uuid.uuid4().hex[:8]
@@ -4060,7 +3967,7 @@ def log_finished_season():
                                                    "Lineups": lineup_rows, "Final table": table_rows})
     except Exception as exc:                       # logging must never break the game
         ss.season_log_saved = False
-        ss.season_log_error = str(exc)
+        ss.season_log_error = f"{type(exc).__name__}: {str(exc)[:400]}"
 
 # --------------------------------------------------------------------------
 # Main Page Router
