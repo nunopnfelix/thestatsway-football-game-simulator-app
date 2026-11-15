@@ -1,7 +1,6 @@
-# 🔍 TheStatsWay - Liga Portugal Manager 🔍
+# 🔍 TheStatsWay - Ligas in Portugal Manager 🔍
  <br>
-Liga Portugal Manager is a Football-Manager-style simulation game built using Streamlit, focused entirely on the 2026/27 Liga Portugal season. 
-Use tactical depth, clever match preparation, and in-game management.   
+Ligas in Portugal Manager is a Football-Manager-style simulation game built with Streamlit. It covers one 2026/27 season of the Portuguese football pyramid (Liga Portugal, Liga 2 and Liga 3), with tactical depth, match preparation and in-game management.  
  <br>
  <br>
  
@@ -13,10 +12,11 @@ Use tactical depth, clever match preparation, and in-game management.
 
 # 1. Career Setup & Squad Management (Squad & Tactics)
 
- • No Transfers: You must work exclusively with the roster your chosen club already possesses.   
- • Detailed Player Attributes: Filter, search, and analyze players by attributes (e.g., Goal-Scoring, Assist-Creation, Physical, Defense, Possession, Dribbling).   
- • Radar Comparisons: Compare any two players side-by-side using an interactive radar performance chart.  
- • Interactive Pitch & Lineup: Drag-and-drop or select players into custom formations (4-3-3, 4-4-2, 4-2-3-1, 5-3-2, etc.) and assign individual player roles (Attack, Balanced, Defensive).  
+ • Pick your division, then your club: start in any of the three divisions (Liga Portugal with 18 clubs, Liga 2 with 18, Liga 3 with 20) and manage any club in it.
+ • No transfers: you work exclusively with the roster your chosen club already has.
+ • Detailed player attributes: filter, search and analyse players by division, club, position and attributes (Goal-Scoring, Assist-Creation, Attack, Dribbling, Possession, Defense, Physical, Goalkeeping), with letter grades from S to F.
+ • Radar comparisons: compare two players side by side on an interactive radar chart.
+ • Interactive pitch and lineup: choose players for preset formations (4-3-3, 4-4-2, 4-2-3-1, 5-3-2 and more) or build your own shape, and assign individual roles (Attack, Balanced, Defensive).
 
 # 2. Deep Tactical Engine (Tactics & Playing Philosophies)
 
@@ -26,18 +26,32 @@ Use tactical depth, clever match preparation, and in-game management.
 
 # 3. Match Simulation & Scouting (Play Matchday)
 
- • Advanced Match Engine: Matches are simulated using a robust expected goals (xG) model that accounts for player ratings, tactical matchups, home advantage, red cards, substitutions, and late-game player fatigue.   
- • Pre-Match Scouting Reports: Before every fixture, receive comprehensive scouting reports detailing your upcoming opponent's expected setup, form, historical meetings, and tactical weaknesses.   
- • Match Reports & Commentary: Follow matches through text commentary, minute-by-minute timelines (goals, cards, substitutions), box-score stats, and visual match reports.   
+ • Match engine: matches use an expected-goals (xG) model that takes into account player ratings, tactical matchups, home advantage, red cards and suspensions, substitutions and late-game fatigue.
+ • Realistic substitutions: at most 3 substitution moments per team. A centre-back is only replaced by a centre-back and never more than one leaves, and at most one substitute plays out of position.   
+ • Assistant manager: replaces suspended players and keeps your lineup valid while you simulate several matchdays. 
+ • Flexible simulation: play one matchday at a time, simulate to mid-season (to the end of the regular phase in Liga 3), or simulate the rest of the season.
+ • Pre-match scouting reports: before every fixture you get the opponent’s expected set-up, league position, form and earlier meetings.
+ • Match reports and commentary: text commentary, a timeline of goals, cards and substitutions, box-score stats and visual match reports.
 
 # 4. League Progress & Statistics (Table & Fixtures)
 
- • Live League Table: Track standings, points, goal differences, and form over a double round-robin season.   
- • Player Statistics: Monitor top scorers, top assist providers, and average match ratings across the league.   
- • Fixtures Matrix: View past results and full schedule matrices.   
+ • All three divisions run at the same time: each has its own live table, with colour-coded zones.  
+ • Liga 3 is played in two phases:  
+####   The 1st phase has two series of 10 clubs, with 18 rounds.
+####   In the 2nd phase the top 4 of each series play the Championship round (8 clubs, starting from 0 points).
+####   The others play the Maintenance round (two groups of 6, with bonus points for their 1st-phase position).
+####   The bottom 2 of each Maintenance group would go down to the Campeonato de Portugal, which is not in the game, so they stay in Liga 3.
+ • Promotion and relegation: 
+####   The top 2 of Liga 2 and of the Liga 3 Championship round are promoted.
+####   The bottom 2 of Liga Portugal and of Liga 2 are relegated.
+####   The 3rd of Liga 2 plays the 16th of Liga Portugal, and the 3rd of the Liga 3 Championship round plays the 16th of Liga 2, in a two-legged play-off.
+ • B-team rule: B teams (Benfica B, Porto B, Sporting CP B, Vitória SC B) cannot be promoted to the division of their main club. The next club takes the place; with Benfica B champion of Liga 2, the 2nd and 3rd are promoted and the 4th plays the play-off.
+ • Player statistics and fixtures: top scorers, top assisters and average match ratings (filterable by division), plus a results matrix for each division.
 
 # 5. Season Awards & Report Card (Season Awards)
 
- • Team of the Season: Automatically selects the best-performing XI of the league based on ratings and appearances.   
- • Player Accolades: Awards for Player of the Season, Top Scorer, and Top Assister.   
- • Shareable Report Card: At the end of the season, generates a detailed visual report card combining your final league finish, Team of the Season, and your club's starting XI, with built-in export and share options.
+ • Season-end summary: your finish, the champions, who was promoted and relegated, and the play-off results.
+ • Team of the Season: the best-performing XI of any division, based on ratings and appearances.
+ • Player accolades: Player of the Season, Top Scorer and Top Assister, per division.
+ • Shareable report card: one image with your final table (for Liga 3, your own Championship or Maintenance group), promotion or relegation badge, Team of the Season and your club’s starting XI, with built-in export and share options.
+ • Results log: each finished season is saved to a results database, including your club, position, tactics, matches and scorers.
