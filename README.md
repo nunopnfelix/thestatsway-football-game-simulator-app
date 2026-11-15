@@ -50,12 +50,14 @@ Ligas in Portugal Manager is a Football-Manager-style simulation game built with
  • All three divisions run at the same time: each has its own live table, with colour-coded zones. 
   <br>
  • Liga 3 is played in two phases:  
+ 
 ####   The 1st phase has two series of 10 clubs, with 18 rounds.
 ####   In the 2nd phase the top 4 of each series play the Championship round (8 clubs, starting from 0 points).
 ####   The others play the Maintenance round (two groups of 6, with bonus points for their 1st-phase position).
 ####   The bottom 2 of each Maintenance group would go down to the Campeonato de Portugal, which is not in the game, so they stay in Liga 3.
  <br>
  • Promotion and relegation: 
+ 
 ####   The top 2 of Liga 2 and of the Liga 3 Championship round are promoted.
 ####   The bottom 2 of Liga Portugal and of Liga 2 are relegated.
 ####   The 3rd of Liga 2 plays the 16th of Liga Portugal, and the 3rd of the Liga 3 Championship round plays the 16th of Liga 2, in a two-legged play-off.
