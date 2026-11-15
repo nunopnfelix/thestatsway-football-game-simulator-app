@@ -1,4 +1,4 @@
-# streamlit run FMtypegame.py
+#streamlit run Football_Game.py
 import base64
 import html as html_lib
 import hashlib
@@ -285,17 +285,91 @@ def _robust_read_csv(path: str) -> pd.DataFrame:
         df[col] = df[col].apply(_repair_mojibake)
     return df
 
+# ---- The league pyramid ----------------------------------------------------------------------------------
+# Three divisions, best first. Every season the top PROMOTION_SPOTS of a division go up and the bottom
+# RELEGATION_SPOTS of the division above come down, so every division keeps its size.
+# Liga 3 is the bottom of the game: nobody is relegated from it (there is no data for a lower division).
+LEAGUES = ["Liga Portugal", "Liga 2", "Liga 3"]
+LEAGUE_TIER = {name: i + 1 for i, name in enumerate(LEAGUES)}
+# The game covers ONE season. Set to True to bring back playing on: "Start next season" (with promotion / relegation
+# applied), player development at the end of each season and the list of previous seasons.
+MULTI_SEASON = False
+LEAGUE_ICON = {}              # no emojis for the divisions (kept as a dict so a label can be added later)
+PLAYOFF_NOTE = ("The 3rd of the lower division plays the 16th of the division above in a two-legged play-off "
+                "(the lower club hosts the first leg); the winner plays in the higher division.")
+
+# ---- Liga 3 (20 clubs) is played in two phases ---------------------------------------------------------------------
+#  1st phase: two series of 10 clubs (by geography), home and away = 18 rounds.
+#  2nd phase - Championship round: the top 4 of each series (8 clubs), home and away = 14 rounds, points start from 0.
+#     The top 2 are promoted to Liga 2; the 3rd plays a two-legged play-off against the 16th of Liga 2.
+#  2nd phase - Maintenance round: the other 6 clubs of each series, home and away = 10 rounds. They start with bonus
+#     points for their 1st-phase position (5th: 6 ... 10th: 1). The bottom 2 of each series would drop to the
+#     Campeonato de Portugal; that division is not in the game, so those clubs stay in Liga 3.
+SERIES_LEAGUE = "Liga 3"
+SERIES_NAMES = ("Série A", "Série B")
+SERIES_A = ["AD Marco 09", "Fafe", "Leça", "Paredes", "Paços de Ferreira", "São João Ver", "Trofense", "Varzim",
+            "Vitória SC B", "Vianense"]            # the other 10 clubs form Série B
+NORTH_CLUBS = {"Porto", "SC Braga", "Vitória SC", "Famalicão", "Gil Vicente", "Rio Ave", "Moreirense", "Arouca", "Porto B",
+               "Amarante", "Chaves", "Felgueiras 1932", "Leixões", "Lusitania FC Lourosa", "Penafiel", "Vizela", "AVS",
+               "Feirense", "UD Oliveirense"} | set(SERIES_A)       # clubs that join Série A when they come down to Liga 3
+FIRST_PHASE_ROUNDS = 18
+CHAMPIONSHIP_QUALIFIERS = 4                        # per series
+MAINTENANCE_BONUS = {5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1}
+MAINTENANCE_RELEGATED = 2                          # per series (to the Campeonato de Portugal, which is not in the game)
+GROUP_LABELS = {"League": "Table", "Série A": "1st phase · Série A", "Série B": "1st phase · Série B",
+                "Championship": "Championship round", "Maintenance A": "Maintenance round · A",
+                "Maintenance B": "Maintenance round · B"}
+PROMOTION_SPOTS = 2           # top N of Liga 2 / Liga 3 go up one division
+RELEGATION_SPOTS = 2          # bottom N of Liga Portugal / Liga 2 go down one division
+# How much weaker a division is than the one above it, in "spreads" (1 spread = the standard deviation of club
+# strength inside one division). 1.5 means an average Liga 2 club is as strong as a very weak Liga Portugal club, so
+# promoted clubs start as relegation candidates and relegated clubs as promotion candidates. Tune freely.
+LEAGUE_GAP_SPREADS = 1.5
+INVISIBLE_MARK = "\u200b"      # zero-width space: makes the key of a same-name player unique without changing how it looks
+
+def clean_name(value):
+    """A player name as it must be shown or saved: without the invisible markers."""
+    return value.replace(INVISIBLE_MARK, "") if isinstance(value, str) else value
+
+DATA_FILES = ["DATA_FINAL.csv", "DATA.csv"]       # first one found is used (the game folder, then next to the script)
+
+def _find_data_file() -> str:
+    folders = []
+    for d in (Path.cwd(), Path(__file__).resolve().parent):
+        if d not in folders:
+            folders.append(d)
+    for d in folders:
+        for name in DATA_FILES:
+            if (d / name).is_file():
+                return str(d / name)
+        try:      # browsers rename repeated downloads ("DATA_FINAL (1).csv", "1794657226743_DATA_FINAL.csv")
+            found = sorted((p for p in d.iterdir() if p.is_file() and p.suffix.lower() == ".csv" and "data_final" in p.name.lower()),
+                           key=lambda p: p.stat().st_mtime, reverse=True)
+            if found:
+                return str(found[0])
+        except OSError:
+            pass
+    return DATA_FILES[0]
+
 @st.cache_data
 def load_data() -> pd.DataFrame:
-    df = _robust_read_csv("DATA.csv")
+    df = _robust_read_csv(_find_data_file())
     df = df.rename(columns=ATTR_RENAME)
     df["Player"] = df["Player"].astype(str).str.strip()
     df["Team"] = df["Team"].astype(str).str.strip()
+    if "League" not in df.columns:                      # an old single-league file
+        df["League"] = LEAGUES[0]
+    df["League"] = df["League"].astype(str).str.strip()
+    if "Season" in df.columns:                          # one season of squads: the most recent one in the file
+        df = df[df["Season"] == sorted(df["Season"].astype(str).unique())[-1]].copy()
+    df = df.reset_index(drop=True)
 
-    dup_rank = df.groupby(["Team", "Player"]).cumcount()
-    df["Player"] = np.where(
-        dup_rank > 0, df["Player"] + " (" + (dup_rank + 1).astype(str) + ")", df["Player"]
-    )
+    # Player names are the keys of every statistic in the game (goals, assists, ratings, suspensions), so they must be
+    # unique across ALL clubs, not just inside a club. Players who share a name (e.g. two "Pedro Santos") are told apart
+    # with invisible zero-width characters: on screen every name looks exactly like in the CSV, nothing is renamed.
+    order = df.assign(_tier=df["League"].map(LEAGUE_TIER).fillna(99), _row=np.arange(len(df))).sort_values(["_tier", "_row"])
+    dup_rank = order.groupby("Player").cumcount().reindex(df.index)
+    df["Player"] = df["Player"] + dup_rank.map(lambda n: INVISIBLE_MARK * int(n))
 
     df["OVR"] = df.apply(_overall_rating, axis=1)
     df["PlayerID"] = df["Team"] + " | " + df["Player"]
@@ -1398,7 +1472,42 @@ def plan_substitutions(xi: pd.DataFrame, bench: pd.DataFrame, rng, exclude=()) -
     n = int(rng.choice(list(SUB_COUNT_WEIGHTS), p=list(SUB_COUNT_WEIGHTS.values())))
     n = min(n, len(s_player), len(b_player))
     w = (np.clip(110 - s_ovr, 5, None) / 50) * np.array([SUB_OFF_GROUP_WEIGHT.get(g, 1.0) for g in s_slot])
-    off_idx = rng.choice(len(s_player), size=n, replace=False, p=w / w.sum())
+
+    # Who comes off is chosen together with who replaces him, so a substitution always makes sense:
+    #  - a centre-back is only replaced by a centre-back, and never more than one centre-back leaves in a match;
+    #  - any other player is replaced by a player of his own position or of the next one (e.g. a winger by a midfielder
+    #    or a striker), never by someone from the other end of the pitch;
+    #  - at most one substitute per match plays out of position, and a natural swap is much more likely than that one.
+    available = list(range(len(b_player)))
+    candidates = list(range(len(s_player)))
+    chosen = []                                       # (starter index, bench index)
+    cb_off, out_of_position = 0, 0
+    while len(chosen) < n and candidates:
+        feasible, repl = [], {}
+        for i in candidates:
+            if s_slot[i] == "CB" and cb_off >= 1:
+                continue
+            if not available:
+                break
+            j = min(available, key=lambda k: (_group_distance(b_pos[k], s_slot[i]), -b_ovr[k], k))
+            dist = _group_distance(b_pos[j], s_slot[i])
+            if dist > (0 if s_slot[i] == "CB" else 1) or (dist > 0 and out_of_position >= 1):
+                continue
+            feasible.append(i)
+            repl[i] = (j, dist)
+        if not feasible:
+            break
+        pw = np.array([w[i] * (1.0 if repl[i][1] == 0 else 0.35) for i in feasible])
+        i = int(rng.choice(feasible, p=pw / pw.sum()))
+        j, dist = repl[i]
+        chosen.append((i, j))
+        candidates.remove(i)
+        available.remove(j)
+        cb_off += s_slot[i] == "CB"
+        out_of_position += dist > 0
+    n = len(chosen)
+    if n == 0:
+        return []
 
     # Substitutions happen in at most MAX_SUB_MOMENTS separate moments (half-time counts as one); several players
     # can change at the same moment. Every moment used has at least one substitution.
@@ -1406,19 +1515,16 @@ def plan_substitutions(xi: pd.DataFrame, bench: pd.DataFrame, rng, exclude=()) -
     k = max(1, min(k, MAX_SUB_MOMENTS, n))
     moments = np.sort(rng.choice(np.arange(46, 86), size=k, replace=False))
     moment_of = list(range(k)) + [int(m) for m in rng.integers(0, k, size=n - k)]
-    plan = sorted(((int(moments[m]), int(i)) for m, i in zip(moment_of, off_idx)), key=lambda t: t[0])
+    plan = sorted(((int(moments[m]), i, j) for m, (i, j) in zip(moment_of, chosen)), key=lambda t: t[0])
 
-    available = list(range(len(b_player)))
     subs = []
-    for minute, i in plan:
-        j = min(available, key=lambda k: (_group_distance(b_pos[k], s_slot[i]), -b_ovr[k], k))
+    for minute, i, j in plan:
         natural = b_pos[j] == s_slot[i]
         subs.append({
             "minute": int(minute), "label": s_label[i], "slot": s_slot[i], "role": s_role[i],
             "off": s_player[i], "on": b_player[j], "on_position": b_pos[j],
             "on_ovr": b_ovr[j] if natural else round(b_ovr[j] * 0.85, 1),
         })
-        available.remove(j)
     return subs
 
 def build_roster(xi: pd.DataFrame, subs: list, reds: list = ()) -> pd.DataFrame:
@@ -1789,22 +1895,97 @@ def table_dataframe(table: dict) -> pd.DataFrame:
 # 5. Streamlit app session
 # --------------------------------------------------------------------------
 
-DF = load_data()
+# Player development: at the end of every season attributes change (see compute_player_development). The new attribute
+# values live in the session (ss.progress) and are applied on top of the file every time the page loads.
+def apply_progression(df: pd.DataFrame, progress: dict, years: int) -> pd.DataFrame:
+    df = df.copy()
+    if years and "Age" in df.columns:
+        df["Age"] = df["Age"] + years
+    if progress:
+        new = pd.DataFrame.from_dict(progress, orient="index")
+        for col in new.columns:
+            if col in df.columns:
+                vals = new[col].reindex(df["Player"]).to_numpy()
+                df[col] = np.where(pd.isna(vals), df[col], vals).astype(df[col].dtype)
+        df["OVR"] = df.apply(_overall_rating, axis=1)
+    return df
+
+BASE_DF = load_data()                  # the squads exactly as in the file (grades are measured against these)
+DF = apply_progression(BASE_DF, st.session_state.get("progress", {}), st.session_state.get("season_no", 0))
 DATA_KEY = hashlib.md5(pd.util.hash_pandas_object(DF, index=True).values.tobytes()).hexdigest()
 PRED_KEY = (hashlib.md5(PREDICTIONS_DF.to_csv(index=False).encode("utf-8")).hexdigest()
             if not PREDICTIONS_DF.empty else "none")
 PLAY_TYPE_BASELINE = compute_play_type_baseline(DATA_KEY, DF)
 _BASELINE = compute_phase_baseline(DATA_KEY, DF)
 PHASE_BASELINE, TEAM_BASELINE = _BASELINE["phase"], _BASELINE["teams"]
-STRENGTH_PRIOR = compute_strength_priors(PRED_KEY, tuple(sorted(DF["Team"].unique())), PREDICTIONS_DF)
-TEAM_STRENGTH_DATA.update(STRENGTH_PRIOR["teams"])
 ALL_TEAMS = sorted(DF["Team"].unique().tolist())
+# Where every club starts (its division in the data file). A club that was promoted or relegated plays in another
+# division later: that is kept in the session (ss.league_of), this is only the starting point.
+START_LEAGUE = DF.drop_duplicates("Team").set_index("Team")["League"].to_dict()
+LEAGUES = [l for l in LEAGUES if l in set(START_LEAGUE.values())] + sorted(set(START_LEAGUE.values()) - set(LEAGUES))
+LEAGUE_TIER = {name: i + 1 for i, name in enumerate(LEAGUES)}
+TEAMS_BY_LEAGUE = {l: sorted(t for t, lg in START_LEAGUE.items() if lg == l) for l in LEAGUES}
+TOP_LEAGUE, BOTTOM_LEAGUE = LEAGUES[0], LEAGUES[-1]
+
+# The pre-season predictions workbook is about the top division only: its club names are matched against the
+# top-division clubs (otherwise "Porto" could be matched with "Porto B").
+STRENGTH_PRIOR = compute_strength_priors(PRED_KEY, tuple(sorted(TEAMS_BY_LEAGUE[TOP_LEAGUE])), PREDICTIONS_DF)
+
+def build_team_strengths(league_of: dict, use_predictions: bool) -> dict:
+    """{club: {"z": strength, "exp_rank": expected finish, "from": ...}} for the divisions as they are NOW.
+    z is in the units of the goal model (log-xG slope per standard deviation), where 0 is the average club of the
+    division. Inside a division the strength comes from the squad (the average z of each club's best XI), scaled to the
+    spread the predictions show for the top division; in season 1 the top division uses the predictions themselves.
+    Divisions are separated by LEAGUE_GAP_SPREADS: a club keeps the quality of the division its squad comes from, so a
+    promoted club is weaker than its new rivals and a relegated club stronger than its new rivals."""
+    pred = STRENGTH_PRIOR["teams"] if use_predictions else {}
+    pred_z = [v["z"] for t, v in pred.items() if v.get("from")]
+    spread = float(np.std(pred_z)) if len(pred_z) >= 5 else 0.8           # the spread of club strength in one division
+    spread = float(np.clip(spread, 0.4, 1.5))
+
+    level = {t: TEAM_BASELINE[t]["level"] for t in ALL_TEAMS}
+    home_stats = {}
+    for lg in LEAGUES:
+        vals = [level[t] for t in TEAMS_BY_LEAGUE[lg]]
+        home_stats[lg] = (float(np.mean(vals)), max(float(np.std(vals)), 1e-6))
+    absolute = {}
+    for t in ALL_TEAMS:                                    # quality of the club on a scale shared by every division
+        mean, sd = home_stats[START_LEAGUE[t]]
+        absolute[t] = spread * (level[t] - mean) / sd - LEAGUE_GAP_SPREADS * spread * (LEAGUE_TIER[START_LEAGUE[t]] - 1)
+
+    out = {}
+    for lg in LEAGUES:
+        members = [t for t, l in league_of.items() if l == lg]
+        if not members:
+            continue
+        base = {t: absolute[t] for t in members}
+        centre = float(np.mean(list(base.values())))
+        z = {t: base[t] - centre for t in members}
+        # the predictions describe the first season of the top division: use them there (a club they do not
+        # know plays at the division average, as before); everywhere else the squads decide
+        from_pred = [t for t in members if t in pred and pred[t].get("from")]
+        predicted = use_predictions and lg == TOP_LEAGUE and len(from_pred) >= max(1, len(members) // 2)
+        if predicted:
+            z = {t: pred[t]["z"] if t in pred else 0.0 for t in members}
+        order = sorted(members, key=lambda t: -z[t])
+        for rank, t in enumerate(order, 1):
+            known = predicted and t in from_pred
+            out[t] = {"z": round(float(z[t]), 3), "exp_rank": round(float(pred[t]["exp_rank"] if known else rank), 2),
+                      "from": pred[t]["from"] if known else None}
+    return out
+
+def refresh_team_strengths():
+    """Rebuild TEAM_STRENGTH_DATA for the divisions of the current season (runs on every page load, it is cheap)."""
+    league_of = st.session_state.get("league_of") or START_LEAGUE
+    first_season = st.session_state.get("season_no", 0) == 0
+    TEAM_STRENGTH_DATA.clear()
+    TEAM_STRENGTH_DATA.update(build_team_strengths(league_of, first_season and not PREDICTIONS_DF.empty))
 
 # Letter grades replace the raw overall number everywhere it is shown. Cut-offs are percentiles of the whole league,
 # so a grade means the same thing whatever the data: S = top 3%, A = next 12%, B = next 20%, C = next 25%,
 # D = next 20%, E = next 13%, F = bottom 7%.
 GRADES = ["S", "A", "B", "C", "D", "E", "F"]
-GRADE_CUTS = [float(v) for v in np.percentile(DF["OVR"].dropna(), [97, 85, 65, 40, 20, 7])]
+GRADE_CUTS = [float(v) for v in np.percentile(BASE_DF["OVR"].dropna(), [97, 85, 65, 40, 20, 7])]   # fixed: a grown player can rise a grade
 
 def ovr_grade(ovr) -> str:
     """Letter grade (S-A-B-C-D-E-F) for an overall rating."""
@@ -1849,9 +2030,22 @@ def init_session():
     ss.setdefault("cover", {"slots": {}, "bench": None})
     ss.setdefault("player_roles", {})    
     ss.setdefault("locked_signature", None)
-    ss.setdefault("schedule", [])
+    ss.setdefault("league_of", dict(START_LEAGUE))     # club -> division it plays in THIS season
+    ss.setdefault("season_no", 0)                        # 0 = first season; promotion / relegation starts the next one
+    ss.setdefault("schedules", {})                       # division -> rounds of fixtures
+    ss.setdefault("schedule", [])                        # the fixtures of the user's own division
     ss.setdefault("matchday", 0)         
-    ss.setdefault("table", {})
+    ss.setdefault("tables", {})                          # division -> {group: {club: table row}}
+    ss.setdefault("team_group", {})                      # club -> its table group now ("League", "Série A", "Championship" ...)
+    ss.setdefault("series_of", {})                       # Liga 3 club -> "Série A" / "Série B"
+    ss.setdefault("l3_phase", 1)
+    ss.setdefault("l3_bonus", {})                         # 1 = first phase, 2 = championship / maintenance rounds
+    ss.setdefault("season_result", None)                 # filled when the season ends: champions, promoted, relegated
+    ss.setdefault("past_seasons", [])
+    ss.setdefault("playoffs", [])                        # the play-offs of the season just finished
+    ss.setdefault("progress", {})                        # player -> new attribute values after the seasons already played
+    ss.setdefault("pending_progress", {})                # the development of the season just finished (applied by "next season")
+    ss.setdefault("dev_report", [])                      # per-player before / after of that development
     ss.setdefault("scorers", {})
     ss.setdefault("assists", {})
     ss.setdefault("history", [])         
@@ -1869,39 +2063,157 @@ if ss.formation == CUSTOM_FORMATION and not ss.custom_slots:      # an empty cus
     ss.manual_lineup = {}
     ss.player_roles = {}
 register_custom_formation(ss.custom_slots)
+refresh_team_strengths()
+
+def season_label(n: int = None) -> str:
+    """'2026/27' for season 0, '2027/28' for season 1 ..."""
+    n = ss.get("season_no", 0) if n is None else n
+    start = 2026 + n
+    return f"{start}/{str(start + 1)[-2:]}"
+
+def user_league() -> str:
+    return ss.league_of.get(ss.user_team, TOP_LEAGUE)
+
+def league_teams(league: str) -> list:
+    return sorted(t for t, l in ss.league_of.items() if l == league)
+
+# B teams ("Benfica B" ...) can never play in the same division as their main club.
+PARENT_CLUB = {t: t[:-2] for t in ALL_TEAMS if t.endswith(" B") and t[:-2] in ALL_TEAMS}
+
+def promotion_eligible(team: str, target_league: str) -> bool:
+    """A B team cannot be promoted to the division where its main club plays."""
+    parent = PARENT_CLUB.get(team)
+    return parent is None or ss.league_of.get(parent) != target_league
+
+def eligible_order(teams: list, target_league: str) -> list:
+    """The teams of a table, best first, without the ones that cannot go up to `target_league`."""
+    return [t for t in teams if promotion_eligible(t, target_league)]
+
+def has_series(league: str) -> bool:
+    return league == SERIES_LEAGUE and "Série A" in ss.tables.get(league, {})
+
+def assign_series():
+    """ss.series_of for the Liga 3 clubs of this season, 10 + 10. Clubs that stay keep their series; clubs that arrive
+    (relegated from Liga 2) take a free place in the series of their region."""
+    teams = league_teams(SERIES_LEAGUE)
+    half = len(teams) // 2
+    out = {t: v for t, v in (ss.get("series_of") or {}).items() if t in teams and v in SERIES_NAMES}
+    if not out:
+        out = {t: SERIES_NAMES[0] if t in SERIES_A else SERIES_NAMES[1] for t in teams}
+    count = lambda name: sum(1 for v in out.values() if v == name)
+    for t in sorted(t for t in teams if t not in out):
+        first, second = (SERIES_NAMES if t in NORTH_CLUBS else SERIES_NAMES[::-1])
+        out[t] = first if count(first) < half else second
+    ss.series_of = out
+
+def group_table_df(team: str) -> pd.DataFrame:
+    """The table the club is playing in right now (its series, the championship or maintenance round, or the league)."""
+    return table_dataframe(ss.tables[ss.league_of[team]][ss.team_group[team]])
+
+def standings_df(league: str = None) -> pd.DataFrame:
+    """One ranking of every club of a division. For Liga 3 it is the final order of the season: the championship round
+    first, then the maintenance rounds by position (before the 2nd phase starts: by position in each series)."""
+    league = league or user_league()
+    tabs = ss.tables.get(league, {})
+    if "Championship" in tabs:
+        head = table_dataframe(tabs["Championship"])
+        rest = [table_dataframe(tabs[k]) for k in ("Maintenance A", "Maintenance B")]
+    elif "Série A" in tabs:
+        head, rest = None, [table_dataframe(tabs[k]) for k in SERIES_NAMES]
+    else:
+        return table_dataframe(next(iter(tabs.values())))
+    rest = pd.concat([r.assign(_pos=r.index) for r in rest]).sort_values(
+        ["_pos", "Pts", "GD", "GF"], ascending=[True, False, False, False]).drop(columns="_pos")
+    df = pd.concat([head, rest]) if head is not None else rest
+    df = df.reset_index(drop=True)
+    df.index = df.index + 1
+    df.index.name = "Pos"
+    return df
+
+def user_schedule() -> list:
+    """The rounds the user's own club plays (used for the matchday counter and the end of the season)."""
+    lg = user_league()
+    rounds = ss.schedules[lg]
+    if has_series(lg):
+        if "Championship" not in ss.tables[lg]:
+            return rounds[:FIRST_PHASE_ROUNDS]
+        n_second = 2 * (CHAMPIONSHIP_QUALIFIERS * 2 - 1) if ss.team_group[ss.user_team] == "Championship" \
+            else 2 * (len(ss.tables[lg]["Maintenance A"]) - 1)
+        return rounds[:FIRST_PHASE_ROUNDS + n_second]
+    return rounds
+
+def season_total_rounds() -> int:
+    """Matchdays of the user's own division: when they have all been played the season is over for the user."""
+    return len(ss.schedule)
+
+def season_is_over() -> bool:
+    return bool(ss.get("season_started")) and ss.matchday >= season_total_rounds()
 
 def start_new_season(team: str):
+    """A brand-new career with `team` in the pyramid as it is in the data file."""
     ss.manager_saved = (ss.get("manager_name") or "").strip()      # the text box disappears with the start page
+    ss.league_of = dict(START_LEAGUE)
+    ss.season_no = 0
+    ss.past_seasons = []
+    ss.progress, ss.pending_progress, ss.dev_report = {}, {}, []
     ss.user_team = team
+    refresh_team_strengths()
+    begin_season(reset_tactics=True)
+
+def begin_season(reset_tactics: bool = True):
+    """Set up the fixtures, tables and statistics of the season for the current divisions (ss.league_of).
+    reset_tactics=False keeps the formation, lineup and tactics for the next season of a career."""
     ss.season_started = True
-    ss.formation = "4-3-3"
-    ss.custom_slots = []
-    ss.pop("custom_slots_select", None)
-    register_custom_formation([])
-    ss.mentality = "Balanced"
-    ss.tempo = "Normal"
-    ss.oop_line = "Medium-block"
-    ss.pressing = "Balanced"
-    ss.passing_style = "Balanced"
-    ss.def_stance = "Compact"
+    if reset_tactics:
+        ss.formation = "4-3-3"
+        ss.custom_slots = []
+        ss.pop("custom_slots_select", None)
+        register_custom_formation([])
+        ss.mentality = "Balanced"
+        ss.tempo = "Normal"
+        ss.oop_line = "Medium-block"
+        ss.pressing = "Balanced"
+        ss.passing_style = "Balanced"
+        ss.def_stance = "Compact"
+        ss.attack_pref = "Balanced"
+        ss.play_type = "Balanced"
+        for attr in ("attack_pref", "play_type", "mentality", "tempo", "oop_line", "pressing", "passing_style", "def_stance"):
+            ss.pop(f"{attr}_choice", None)
+        ss.manual_lineup = {}
+        ss.bench = []
+        ss.pop("bench_select", None)
+        ss.player_roles = {}
+        ss.locked_signature = None
     ss.season_seed = random.randrange(10**9)
-    ss.attack_pref = "Balanced"
-    ss.play_type = "Balanced"
-    for attr in ("attack_pref", "play_type", "mentality", "tempo", "oop_line", "pressing", "passing_style", "def_stance"):
-        ss.pop(f"{attr}_choice", None)
-    ss.manual_lineup = {}
-    ss.bench = []
-    ss.pop("bench_select", None)
     ss.suspensions = {}
     ss.assistant_notes = []
     ss.cover = {"slots": {}, "bench": None}
-    ss.player_roles = {}
-    ss.locked_signature = None
-    teams = ALL_TEAMS[:]
-    random.shuffle(teams)
-    ss.schedule = round_robin_schedule(teams)
+    ss.schedules, ss.tables, ss.team_group = {}, {}, {}
+    ss.l3_phase = 1
+    for lg in LEAGUES:
+        teams = league_teams(lg)
+        if not teams:
+            continue
+        if lg == SERIES_LEAGUE and len(teams) >= 12 and len(teams) % 2 == 0:
+            assign_series()                                   # two series, 18 rounds; the 2nd phase is created later
+            groups = {name: [t for t in teams if ss.series_of[t] == name] for name in SERIES_NAMES}
+            per_series = []
+            for name, members in groups.items():
+                random.shuffle(members)
+                per_series.append(round_robin_schedule(members))
+                for t in members:
+                    ss.team_group[t] = name
+            ss.schedules[lg] = [a + b for a, b in zip(*per_series)]
+            ss.tables[lg] = {name: {t: empty_table_row() for t in members} for name, members in groups.items()}
+        else:
+            random.shuffle(teams)
+            ss.schedules[lg] = round_robin_schedule(teams)
+            ss.tables[lg] = {"League": {t: empty_table_row() for t in teams}}
+            for t in teams:
+                ss.team_group[t] = "League"
+    ss.schedule = user_schedule()
     ss.matchday = 0
-    ss.table = {t: empty_table_row() for t in ALL_TEAMS}
+    ss.season_result = None
     ss.scorers = {}
     ss.assists = {}
     ss.history = []
@@ -2193,14 +2505,16 @@ def ai_lineup_for(team: str, rnd=random):
     play_type = rnd.choices(PLAY_TYPE_NAMES, weights=[float(np.exp(4 * (f - 0.5))) for f in fits])[0]
     return xi, mentality, tempo, line, press, formation, style, play_type, passing, stance
 
-def play_fixture(home, away, rng):
+def play_fixture(home, away, rng, round_idx=None, playoff=False):
+    rd = ss.matchday if round_idx is None else round_idx          # round of THIS division (0-based)
+    league = ss.league_of[home]
     if home == ss.user_team:
         home_xi, home_ment, home_tempo, home_line, home_press, home_formation, home_pref, home_type, home_pass, home_stance = (
             current_user_xi(), ss.mentality, ss.tempo, ss.oop_line, ss.pressing, ss.formation, ss.attack_pref, ss.play_type,
             ss.passing_style, ss.def_stance)
     else:
         home_xi, home_ment, home_tempo, home_line, home_press, home_formation, home_pref, home_type, home_pass, home_stance = (
-            ai_lineup_for(home, scout_rng(home, ss.matchday)))
+            ai_lineup_for(home, scout_rng(home, rd)))
 
     if away == ss.user_team:
         away_xi, away_ment, away_tempo, away_line, away_press, away_formation, away_pref, away_type, away_pass, away_stance = (
@@ -2208,7 +2522,7 @@ def play_fixture(home, away, rng):
             ss.passing_style, ss.def_stance)
     else:
         away_xi, away_ment, away_tempo, away_line, away_press, away_formation, away_pref, away_type, away_pass, away_stance = (
-            ai_lineup_for(away, scout_rng(away, ss.matchday)))
+            ai_lineup_for(away, scout_rng(away, rd)))
 
     home_served, away_served = set(suspended_for(home)), set(suspended_for(away))     # bans served in this match
     home_bench = (user_bench(home_xi) if home == ss.user_team
@@ -2257,7 +2571,8 @@ def play_fixture(home, away, rng):
         if e.get("assist"):
             ss.assists[e["assist"]] = ss.assists.get(e["assist"], 0) + 1
 
-    update_table(ss.table, home, away, result["home_goals"], result["away_goals"])
+    if not playoff:                                          # play-off legs do not count for any table
+        update_table(ss.tables[league][ss.team_group[home]], home, away, result["home_goals"], result["away_goals"])
 
     # Suspensions: this match counts off bans being served, red cards from it add new ones
     apply_suspensions_after_match(home, home_served, home_reds)
@@ -2334,7 +2649,7 @@ def play_fixture(home, away, rng):
             label = f"{ptype} · {round(fit * 100)}% fit"
             return label if pref == "Balanced" else f"{label} · {pref.replace('Focus on ', '')}"
         ss.last_match_report = build_match_report(
-            home, away, ss.matchday + 1, result, home_events, away_events, home_cards, away_cards,
+            home, away, rd + 1, result, home_events, away_events, home_cards, away_cards,
             home_subs, away_subs,
             tactics_label(home_type, home_fit, home_pref), tactics_label(away_type, away_fit, away_pref),
             home_reds, away_reds
@@ -2355,7 +2670,7 @@ def play_fixture(home, away, rng):
             "scorers": [(e["minute"], e["scorer"]) for e in my_events],
         }
     ss.history.append({
-        "round": ss.matchday + 1, "home": home, "away": away,
+        "round": rd + 1, "league": league, "playoff": playoff, "home": home, "away": away,
         "user_match": user_match,
         "hg": result["home_goals"], "ag": result["away_goals"],
         "is_user": ss.user_team in (home, away),
@@ -2363,6 +2678,15 @@ def play_fixture(home, away, rng):
         "home_events": home_events, "away_events": away_events,
     })
     return result, home_events, away_events
+
+def _play_round_of_league(league: str, round_idx: int, rng):
+    """Play one round of one division. Returns the user's match (home, away, result, home events, away events) or None."""
+    user_result = None
+    for home, away in ss.schedules[league][round_idx]:
+        result, he, ae = play_fixture(home, away, rng, round_idx)
+        if ss.user_team in (home, away):
+            user_result = (home, away, result, he, ae)
+    return user_result
 
 def play_next_matchday(auto_fix: bool = False):
     if ss.matchday >= len(ss.schedule): return None
@@ -2372,13 +2696,13 @@ def play_next_matchday(auto_fix: bool = False):
         autofix_user_lineup()
         ss.locked_signature = current_tactics_signature()
     rng = np.random.default_rng()
-    round_fixtures = ss.schedule[ss.matchday]
     user_result = None
-    for home, away in round_fixtures:
-        result, he, ae = play_fixture(home, away, rng)
-        if ss.user_team in (home, away):
-            user_result = (home, away, result, he, ae)
-            
+    # every division plays its round on the same matchday (a division with fewer rounds is simply finished earlier)
+    for league, rounds in ss.schedules.items():
+        if ss.matchday < len(rounds):
+            r = _play_round_of_league(league, ss.matchday, rng)
+            user_result = user_result or r
+
     if user_result:
         home, away, result, he, ae = user_result
         lines = [f"Full time at {home}'s ground: {home} {result['home_goals']}-{result['away_goals']} {away}."]
@@ -2403,22 +2727,277 @@ def play_next_matchday(auto_fix: bool = False):
     else:
         ss.last_commentary = None
     ss.matchday += 1
+    start_second_phase_if_due()
     if ss.matchday >= len(ss.schedule):
-        log_finished_season()
+        finish_season()
+
+def start_second_phase_if_due():
+    """Liga 3: when the 18 rounds of the two series are over, the top 4 of each series play the championship round and
+    the others the maintenance round (with bonus points). The rounds are created now because they depend on the table."""
+    lg = SERIES_LEAGUE
+    if lg not in ss.tables or "Série A" not in ss.tables[lg] or "Championship" in ss.tables[lg]:
+        return
+    if ss.matchday < FIRST_PHASE_ROUNDS:
+        return
+    tables = ss.tables[lg]
+    champions, maintenance = [], {"Maintenance A": [], "Maintenance B": []}
+    bonus = {}
+    for series, key in zip(SERIES_NAMES, maintenance):
+        df = table_dataframe(tables[series])
+        champions += list(df["Team"].iloc[:CHAMPIONSHIP_QUALIFIERS])
+        for pos, team in zip(df.index[CHAMPIONSHIP_QUALIFIERS:], df["Team"].iloc[CHAMPIONSHIP_QUALIFIERS:]):
+            maintenance[key].append(team)
+            bonus[team] = MAINTENANCE_BONUS.get(int(pos), 0)
+    random.shuffle(champions)
+    tables["Championship"] = {t: empty_table_row() for t in champions}
+    for t in champions:
+        ss.team_group[t] = "Championship"
+    for key, members in maintenance.items():
+        random.shuffle(members)
+        tables[key] = {}
+        for t in members:
+            row = empty_table_row()
+            row["Pts"] = bonus[t]                               # bonus points for the 1st-phase position
+            tables[key][t] = row
+            ss.team_group[t] = key
+    champ_rounds = round_robin_schedule(champions)
+    maint_a, maint_b = (round_robin_schedule(maintenance[k]) for k in ("Maintenance A", "Maintenance B"))
+    extra = [c + (a + b if i < len(maint_a) else []) for i, (c, a, b) in
+             enumerate(zip(champ_rounds, maint_a + [[]] * len(champ_rounds), maint_b + [[]] * len(champ_rounds)))]
+    ss.schedules[lg] = ss.schedules[lg][:FIRST_PHASE_ROUNDS] + extra
+    ss.l3_phase = 2
+    ss.l3_bonus = bonus
+    ss.schedule = user_schedule()
+
+def _play_playoff(lower: str, upper: str, rng, round_idx: int, lower_league: str, upper_league: str) -> dict:
+    """Two legs (the lower club hosts the first), decided on aggregate goals and, if level, on penalties."""
+    r1, _, _ = play_fixture(lower, upper, rng, round_idx, playoff=True)
+    r2, _, _ = play_fixture(upper, lower, rng, round_idx + 1, playoff=True)
+    low_goals = r1["home_goals"] + r2["away_goals"]
+    up_goals = r1["away_goals"] + r2["home_goals"]
+    pens = low_goals == up_goals
+    low_wins = (rng.random() < 0.5) if pens else low_goals > up_goals
+    return {"lower": lower, "upper": upper, "lower_league": lower_league, "upper_league": upper_league,
+            "legs": [(lower, upper, r1["home_goals"], r1["away_goals"]), (upper, lower, r2["home_goals"], r2["away_goals"])],
+            "agg": (low_goals, up_goals), "pens": bool(pens), "winner": lower if low_wins else upper}
+
+def finish_season():
+    """The user's division is over: play every round the other divisions still have, the promotion play-offs, work out
+    who goes up and down, and save the season to the results log."""
+    rng = np.random.default_rng()
+    for league, rounds in ss.schedules.items():
+        for r in range(ss.matchday, len(rounds)):
+            _play_round_of_league(league, r, rng)
+    longest = max((len(r) for r in ss.schedules.values()), default=0)
+    ss.playoffs = play_all_playoffs(rng, base_round=longest)
+    ss.season_result = compute_season_result()
+    if MULTI_SEASON:
+        ss.pending_progress, ss.dev_report = compute_player_development()
+    log_finished_season()
+
+def play_all_playoffs(rng, base_round: int) -> list:
+    """Between every two divisions: the 3rd of the lower one against the 16th (n - relegation spots) of the higher one."""
+    out = []
+    for i in range(len(LEAGUES) - 1):
+        up_lg, low_lg = LEAGUES[i], LEAGUES[i + 1]
+        if up_lg not in ss.tables or low_lg not in ss.tables:
+            continue
+        up_df, low_df = standings_df(up_lg), standings_df(low_lg)
+        upper = up_df["Team"].iloc[len(up_df) - RELEGATION_SPOTS - 1]          # 16th of 18
+        ranked = eligible_order(list(low_df["Team"]), up_lg)                    # B teams cannot go up: the next club takes the place
+        if len(ranked) <= PROMOTION_SPOTS:
+            continue
+        lower = ranked[PROMOTION_SPOTS]                                         # 3rd of the clubs that can go up
+        out.append(_play_playoff(lower, upper, rng, base_round + 2 * i, low_lg, up_lg))
+    return out
 
 def simulate_to_end():
     while ss.matchday < len(ss.schedule):
         play_next_matchday(auto_fix=True)
+
+def mid_season_matchday() -> int:
+    """Matchday at which the season is half way: Liga 3 - the end of the regular phase (the 2 series); the others - half of the rounds."""
+    if user_league() == SERIES_LEAGUE and has_series(SERIES_LEAGUE):
+        return FIRST_PHASE_ROUNDS
+    return len(ss.schedule) // 2
+
+def simulate_to_mid_season():
+    target = mid_season_matchday()
+    while ss.matchday < min(target, len(ss.schedule)):
+        play_next_matchday(auto_fix=True)
+
+# --------------------------------------------------------------------------
+# Promotion and relegation
+# --------------------------------------------------------------------------
+def compute_season_result() -> dict:
+    """Champions of every division, who is promoted / relegated (directly and through the play-offs), and the user's outcome."""
+    standings = {lg: standings_df(lg) for lg in ss.tables}
+    champions = {lg: df["Team"].iloc[0] for lg, df in standings.items()}
+    playoffs = list(ss.get("playoffs") or [])
+    promoted, relegated = {}, {}                  # division a club LEAVES -> clubs
+    for i, lg in enumerate(LEAGUES):
+        if lg not in standings:
+            continue
+        if i > 0:                                  # not the top division: its best clubs go up directly (B teams cannot)
+            promoted[lg] = eligible_order(list(standings[lg]["Team"]), LEAGUES[i - 1])[:PROMOTION_SPOTS]
+        if i < len(LEAGUES) - 1 and LEAGUES[i + 1] in standings:   # a division below exists: the worst clubs go down
+            relegated[lg] = list(standings[lg]["Team"].iloc[-RELEGATION_SPOTS:])
+    for po in playoffs:                            # a lower club that wins its play-off swaps places with the upper club
+        if po["winner"] == po["lower"]:
+            promoted.setdefault(po["lower_league"], []).append(po["lower"])
+            relegated.setdefault(po["upper_league"], []).append(po["upper"])
+    user_lg = user_league()
+    df = standings[user_lg]
+    pos = int(df.index[df["Team"] == ss.user_team][0])
+    up = ss.user_team in sum(promoted.values(), [])
+    down = ss.user_team in sum(relegated.values(), [])
+    outcome = ("Champions & promoted" if pos == 1 and up else "Champions" if pos == 1 else "Promoted" if up
+               else "Relegated" if down else "Stayed up" if user_lg != BOTTOM_LEAGUE else "Stayed")
+    user_po = next((po for po in playoffs if ss.user_team in (po["lower"], po["upper"])), None)
+    new_league = dict(ss.league_of)
+    for lg, teams in promoted.items():
+        for t in teams:
+            new_league[t] = LEAGUES[LEAGUES.index(lg) - 1]
+    for lg, teams in relegated.items():
+        for t in teams:
+            new_league[t] = LEAGUES[LEAGUES.index(lg) + 1]
+    return {"season": season_label(), "champions": champions, "promoted": promoted, "relegated": relegated,
+            "playoffs": playoffs, "user_playoff": user_po,
+            "new_league": new_league, "user_team": ss.user_team, "user_league": user_lg, "user_pos": pos,
+            "outcome": outcome, "next_league": new_league[ss.user_team]}
+
+# --------------------------------------------------------------------------
+# Player development / regression at the end of the season
+# --------------------------------------------------------------------------
+DEV_ATTRS = ["Goal-Scoring", "Assist-Creation", "Attack", "Dribbling", "Possession", "Defense", "Physical", "Goalkeeping"]
+
+def _age_shift(age: int, position: str) -> float:
+    """Average yearly change of an attribute point with age: youngsters grow, veterans decline (goalkeepers last longer)."""
+    a = age - (3 if position == "GK" else 0)
+    # one attribute point is about 5 OVR points, so these are small numbers on purpose
+    if a <= 20: return 0.45
+    if a <= 22: return 0.30
+    if a <= 24: return 0.15
+    if a <= 28: return 0.00
+    if a <= 30: return -0.12
+    if a <= 32: return -0.30
+    return -0.55
+
+def compute_player_development() -> tuple:
+    """Who improves and who declines after the season just played. Returns (new attribute values of every player whose
+    attributes changed, a before/after report for all players).
+    The change of a player is: an age effect + a performance effect + a bit of luck.
+    Performance = his average match rating against the other players of the same position in his division (weighted
+    by how much he played, so a player with few matches stays close to his age curve); goals and assists per game
+    also move Goal-Scoring and Assist-Creation. Young players gain more from a good season, veterans lose more from a bad one."""
+    rng = np.random.default_rng((int(ss.season_seed or 1) + 7919 * (ss.season_no + 1)) % (2**32))
+    sp = season_player_table().set_index("Player")
+    rounds = {lg: len(r) for lg, r in ss.schedules.items()}
+    sp["rounds"] = sp["League"].map(rounds).fillna(34)
+    sp["gpa"], sp["apa"] = sp["Goals"] / sp["Apps"], sp["Assists"] / sp["Apps"]
+    regulars = sp[sp["Apps"] >= 0.3 * sp["rounds"]]
+    stat = regulars.groupby(["League", "Position"]).agg(
+        r_mean=("Rating", "mean"), r_sd=("Rating", "std"), g_mean=("gpa", "mean"), g_sd=("gpa", "std"),
+        a_mean=("apa", "mean"), a_sd=("apa", "std"))
+    clip = lambda v, lo, hi: max(lo, min(hi, v))
+
+    new_values, report = {}, []
+    for row in DF.to_dict("records"):
+        player, pos, age = row["Player"], row["Position"], int(row["Age"])
+        z = gz = az = w = 0.0
+        apps, rating = 0, 0.0
+        if player in sp.index:
+            r = sp.loc[player]
+            apps, rating = int(r["Apps"]), float(r["Rating"])
+            w = min(1.0, apps / (0.6 * r["rounds"]))              # how much of a full season he played
+            key = (r["League"], pos)
+            if key in stat.index:
+                g = stat.loc[key]
+                z = clip((rating - g["r_mean"]) / max(g["r_sd"] if pd.notna(g["r_sd"]) else 0, 0.25), -2, 2)
+                if pos != "GK":
+                    gz = clip((r["gpa"] - g["g_mean"]) / max(g["g_sd"] if pd.notna(g["g_sd"]) else 0, 0.05), -1.5, 1.5)
+                    az = clip((r["apa"] - g["a_mean"]) / max(g["a_sd"] if pd.notna(g["a_sd"]) else 0, 0.05), -1.5, 1.5)
+        perf = 0.30 * z * w
+        if perf > 0 and age <= 23: perf *= 1.4                     # a young player with a good season takes a big step
+        if perf > 0 and age >= 30: perf *= 0.5                     # veterans gain little...
+        if perf < 0 and age >= 30: perf *= 1.3                     # ...and lose more after a bad year
+        shift = _age_shift(age, pos) + perf
+        weights = POS_WEIGHTS.get(pos, POS_WEIGHTS["MF"])
+
+        new = {}
+        for a in DEV_ATTRS:
+            old = int(row[a])
+            if pos != "GK" and a == "Goalkeeping":
+                new[a] = old
+                continue
+            if a in weights:
+                d = shift + rng.normal(0, 0.25)
+                if a == "Physical" and age >= 28: d -= 0.06 * (age - 27)      # the body declines first
+            else:
+                d = 0.4 * shift + rng.normal(0, 0.10)
+            if a == "Goal-Scoring": d += 0.20 * gz * w
+            if a == "Assist-Creation": d += 0.20 * az * w
+            n = int(np.floor(d)) + int(rng.random() < d - np.floor(d))   # 0.4 -> 40% chance of +1
+            new[a] = int(clip(old + clip(n, -2, 2), 0, 19))
+        before = _overall_rating(row)
+        after = _overall_rating({**row, **new})
+        if any(new[a] != int(row[a]) for a in DEV_ATTRS):
+            new_values[player] = new
+        report.append({"Player": player, "Team": row["Team"], "League": ss.league_of.get(row["Team"], ""), "Position": pos,
+                       "Age": age, "Apps": apps, "Rating": round(rating, 2), "OVR before": before, "OVR after": after,
+                       "Change": round(after - before, 1)})
+    return new_values, report
+
+def render_development(club: str = None, expanded: bool = False, title: str = "📈 Player development"):
+    """Before / after table of last season's development: the user's squad plus the biggest risers and fallers."""
+    rep_df = pd.DataFrame(ss.dev_report)
+    if rep_df.empty:
+        return
+    with st.expander(title, expanded=expanded):
+        mine = rep_df[rep_df["Team"] == (club or ss.user_team)].sort_values("Change", ascending=False)
+        def trend(v): return "📈" if v >= 1 else "📉" if v <= -1 else "➡️"
+        mine = mine.assign(Trend=mine["Change"].map(trend))[["Trend", "Player", "Position", "Age", "Apps", "Rating", "OVR before", "OVR after", "Change"]]
+        st.markdown(f"**{club or ss.user_team}**")
+        st.dataframe(mine, use_container_width=True, hide_index=True)
+        c1, c2 = st.columns(2)
+        cols = ["Player", "Team", "Age", "OVR before", "OVR after", "Change"]
+        c1.markdown("**Biggest improvers (all divisions)**")
+        c1.dataframe(rep_df.sort_values("Change", ascending=False).head(8)[cols], use_container_width=True, hide_index=True)
+        c2.markdown("**Biggest declines (all divisions)**")
+        c2.dataframe(rep_df.sort_values("Change").head(8)[cols], use_container_width=True, hide_index=True)
+        st.caption("Age sets the trend, performance moves it: players who rate well in their division for their position improve more "
+                   "(or decline less); those who rate badly improve less (or decline more). Ratings are per division, so a top "
+                   "player of Liga 3 can grow even if his OVR stays below Liga Portugal level.")
+
+def start_next_season():
+    """Apply promotion / relegation and start the next season of the same career with the same club and tactics."""
+    res = ss.season_result
+    if not res:
+        return
+    ss.past_seasons.append({k: res[k] for k in ("season", "champions", "promoted", "relegated", "playoffs", "user_team",
+                                                  "user_league", "user_pos", "outcome")})
+    ss.playoffs = []
+    ss.league_of = dict(res["new_league"])
+    ss.progress = {**ss.progress, **ss.pending_progress}     # the development of this season becomes part of the squads
+    ss.pending_progress = {}
+    ss.season_no += 1
+    st.cache_data.clear()                                    # lineups / baselines depend on the attributes
+    for key in ("season_logged", "season_log_saved", "season_log_error"):
+        ss.pop(key, None)
+    refresh_team_strengths()
+    begin_season(reset_tactics=False)
 
 # --------------------------------------------------------------------------
 # Sidebar
 # --------------------------------------------------------------------------
 with st.sidebar:
     st.title("⚽ Liga Portugal Manager")
-    st.caption("Liga Portugal 2026/27")
+    st.caption(f"{' · '.join(LEAGUES)} · {season_label()}")
 
     if ss.season_started:
         st.metric("Managing", ss.user_team)
+        st.metric("Division", f"{user_league()}")
+        st.metric("Season", season_label())
         st.metric("Matchday", f"{min(ss.matchday + 1, len(ss.schedule))} / {len(ss.schedule)}")
         st.divider()
         if st.button("🔄 Restart Game", use_container_width=True):
@@ -2441,7 +3020,7 @@ with st.sidebar:
 # --------------------------------------------------------------------------
 
 def style_player_attributes(df: pd.DataFrame):
-    exclude_cols = ["OVR", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "round", "Season"]
+    exclude_cols = ["OVR", "Age", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "round", "Season"]
     num_cols = [c for c in df.select_dtypes(include=np.number).columns if c not in exclude_cols]
     
     if not num_cols:
@@ -2475,20 +3054,49 @@ def render_instructions():
         """
 <div class="hero-title">
 <h1>⚽ Welcome to <span class="accent">Liga Portugal Manager</span></h1>
-<p>A Football-Manager-style game built on real Liga Portugal squads.
+<p>A Football-Manager-style game built on the real squads of Liga Portugal, Liga 2 and Liga 3.
 No transfer market — you manage exactly the players your club already has.</p>
 </div>
 """,
         unsafe_allow_html=True,
     )
 
+    with st.expander("🔺🔻 How the three divisions work", expanded=not ss.season_started):
+        sizes = ", ".join(f"{l} ({len(TEAMS_BY_LEAGUE[l])} clubs)" for l in LEAGUES)
+        st.markdown(
+            f"- The pyramid has three divisions: {sizes}. All three are played at the same time, every matchday.\n"
+            f"- At the end of each season the **top {PROMOTION_SPOTS}** of {LEAGUES[1]} and of the {LEAGUES[2]} Championship round are "
+            f"**promoted**, and the **bottom {RELEGATION_SPOTS}** of {LEAGUES[0]} and {LEAGUES[1]} are **relegated**. On top of that, "
+            f"the **3rd** of {LEAGUES[1]} plays the **16th** of {LEAGUES[0]}, and the 3rd of the {LEAGUES[2]} Championship round plays the "
+            f"16th of {LEAGUES[1]}, in a two-legged play-off (played automatically at the end of the season, the lower club hosts "
+            "the first leg).\n"
+            "- **B teams** (Benfica B, Porto B, Sporting CP B, Vitória SC B) cannot be promoted to the division of their main club. If "
+            "one finishes in a promotion place, the next club takes it: e.g. with Benfica B champion of Liga 2, the 2nd and 3rd are "
+            "promoted and the 4th plays the play-off.\n"
+            f"- **{LEAGUES[2]}** has two phases. 1st phase: two series of 10 clubs (18 rounds). 2nd phase: the top 4 of each series play the "
+            "**Championship round** (8 clubs, 14 rounds, starting from 0 points), the others the **Maintenance round** (two groups of 6, "
+            "10 rounds, with bonus points for their 1st-phase position). The bottom 2 of each Maintenance group would go down to the "
+            "Campeonato de Portugal; it is not in the game, so they stay.\n"
+            "- The game covers one season: at the end you see where your club finished, who was promoted and relegated, the "
+            "play-offs and the season awards."
+            + ("\n- Then you can start the next season with the same club and tactics, in the division you earned.\n"
+               "- **Player development:** at the end of every season each player improves or declines, depending on his age and "
+               "his season.\n"
+               "- Each division is weaker than the one above it: a promoted club starts as a relegation candidate."
+               if MULTI_SEASON else ""))
+
     if not ss.season_started:
         st.subheader("🏁 Start Your Career")
-        st.markdown("Select a club below to begin managing.")
+        st.markdown("Pick the division you want to start in, then your club. Players of the lower divisions are rated against their own "
+                    "division.")
         st.text_input("Your manager name (optional, saved with your season in the results log)", key="manager_name",
                       max_chars=40, placeholder="e.g. Nuno")
 
-        teams = ALL_TEAMS[:]
+        st.markdown("**1. Choose the division**")
+        start_league = st.radio("Division", LEAGUES, horizontal=True, key="start_league", label_visibility="collapsed",
+                                format_func=lambda l: f"{l} · {len(TEAMS_BY_LEAGUE[l])} clubs")
+        st.markdown(f"**2. Choose your club in {start_league}**")
+        teams = TEAMS_BY_LEAGUE[start_league]
         for i in range(0, len(teams), 3):
             cols = st.columns(3)
             for j in range(3):
@@ -2824,7 +3432,7 @@ def render_scouting_report(expanded: bool = True):
         my_fit = play_type_squad_fit(ss.play_type, my_xi, ss.user_team, ss.formation, ss.mentality, ss.tempo, ss.oop_line,
                                      ss.pressing, ss.attack_pref, ss.passing_style, ss.def_stance)["fit"]
 
-    standings = table_dataframe(ss.table)
+    standings = group_table_df(ss.user_team)
     row = standings[standings["Team"] == opp].iloc[0]
     position = int(standings.index[standings["Team"] == opp][0])
 
@@ -2901,6 +3509,8 @@ def render_squad_tactics():
 
     restore_covered_lineup()
     st.subheader(f"{ss.user_team} — Squad & Tactics")
+    if MULTI_SEASON and ss.season_no > 0 and ss.matchday == 0 and ss.dev_report:
+        render_development(title=f"📈 How your players developed after {season_label(ss.season_no - 1)}", expanded=False)
 
     if ss.user_team in TEAM_STRENGTH_DATA:
         info = TEAM_STRENGTH_DATA[ss.user_team]
@@ -3236,12 +3846,10 @@ def render_play():
     
     st.subheader("▶️ Play Matchday")
     if ss.matchday >= len(ss.schedule):
-        st.success("🎉 The season is over! Check the final league table and the season awards.")
-        if st.button("🏆 See the Team of the Season", key="goto_awards"):
+        render_season_end_panel()
+        if st.button("🏆 See the Season Awards", key="goto_awards"):
             ss.page = "awards"
             st.rerun()
-        if ss.get("season_log_saved") is False:
-            render_log_retry()
         if ss.recent_match_ratings:
             st.markdown("#### 📊 Final Match Ratings")
             ratings_df = pd.DataFrame(ss.recent_match_ratings)
@@ -3268,12 +3876,21 @@ def render_play():
             st.rerun()
         return
 
-    col1, col2 = st.columns(2)
-    with col1:
+    mid = mid_season_matchday()
+    mid_label = "⏩ Simulate to End of Regular Phase" if has_series(user_league()) and user_league() == SERIES_LEAGUE else "⏩ Simulate to Mid-Season"
+    show_mid = ss.matchday < mid                       # the mid-season button is only there until that point is reached
+    cols = st.columns(3 if show_mid else 2)
+    with cols[0]:
         if st.button("Play Next Matchday", type="primary", use_container_width=True):
             play_next_matchday()
             st.rerun()
-    with col2:
+    if show_mid:
+        with cols[1]:
+            if st.button(mid_label, use_container_width=True,
+                         help=f"Plays matchdays {ss.matchday + 1} to {mid} with your assistant manager covering suspensions."):
+                simulate_to_mid_season()
+                st.rerun()
+    with cols[-1]:
         if st.button("⏩ Simulate Rest of Season", use_container_width=True):
             simulate_to_end()
             st.rerun()
@@ -3297,7 +3914,10 @@ def render_play():
             
     st.divider()
     st.markdown("### Recent Results")
-    recent = [h for h in ss.history if h["round"] == ss.matchday]
+    shown = [l for l in LEAGUES if l in ss.schedules]
+    res_league = st.selectbox("Division", shown, index=shown.index(user_league()), key="recent_results_league",
+                              format_func=lambda l: f"{l}")
+    recent = [h for h in ss.history if h["round"] == ss.matchday and h.get("league") == res_league]
     if recent:
         recent_df = pd.DataFrame([
             {
@@ -3315,17 +3935,175 @@ def render_play():
         ratings_df = pd.DataFrame(ss.recent_match_ratings)
         st.dataframe(ratings_df, use_container_width=True, hide_index=True)
 
+def zone_of(league: str, group: str, pos: int, n: int) -> str:
+    """'champion' | 'promotion' | 'playoff' | 'qualify' | 'relegation' | '' for a position in a table of a division."""
+    i = LEAGUES.index(league)
+    if group in SERIES_NAMES:                                   # Liga 3, 1st phase: the top 4 go to the championship round
+        return "qualify" if pos <= CHAMPIONSHIP_QUALIFIERS else ""
+    if group == "Championship":
+        return ""                                                # promotion places: see table_zones (B teams do not count)
+    if group.startswith("Maintenance"):
+        return "relegation" if pos > n - MAINTENANCE_RELEGATED else ""
+    if i == 0 and pos == 1:
+        return "champion"
+    if i < len(LEAGUES) - 1:
+        if pos > n - RELEGATION_SPOTS:
+            return "relegation"
+        if pos == n - RELEGATION_SPOTS:
+            return "playoff"
+    return ""
+
+def table_zones(league: str, group: str, teams: list) -> list:
+    """The zone of every row of a table (teams listed in table order). The promotion and play-off places go to the first
+    clubs that CAN be promoted: a B team above them is skipped, and a B team itself gets no promotion colour."""
+    i = LEAGUES.index(league)
+    n = len(teams)
+    zones, eligible_seen = [], 0
+    for pos, team in enumerate(teams, 1):
+        zone = zone_of(league, group, pos, n)
+        if i > 0 and group in ("League", "Championship") and not zone:
+            if promotion_eligible(team, LEAGUES[i - 1]):
+                eligible_seen += 1
+                zone = "promotion" if eligible_seen <= PROMOTION_SPOTS else "playoff" if eligible_seen == PROMOTION_SPOTS + 1 else ""
+        zones.append(zone)
+    return zones
+
+ZONE_BG = {"champion": "rgba(250, 204, 21, 0.20)", "promotion": "rgba(34, 197, 94, 0.22)",
+           "playoff": "rgba(59, 130, 246, 0.22)", "qualify": "rgba(34, 197, 94, 0.12)", "relegation": "rgba(239, 68, 68, 0.22)"}
+
+def zone_legend(league: str, group: str = "League") -> str:
+    i = LEAGUES.index(league)
+    parts = []
+    if group in SERIES_NAMES:
+        parts.append(f"🟩 top {CHAMPIONSHIP_QUALIFIERS} of each series go to the Championship round, the others to the Maintenance round "
+                     f"(with bonus points for their position: 5th {MAINTENANCE_BONUS[5]} ... 10th {MAINTENANCE_BONUS[10]})")
+    elif group == "Championship":
+        parts += [f"🟩 top {PROMOTION_SPOTS} promoted to {LEAGUES[i - 1]}", f"🟦 3rd plays the 16th of {LEAGUES[i - 1]} in a two-legged play-off"]
+    elif group.startswith("Maintenance"):
+        parts.append(f"🟥 bottom {MAINTENANCE_RELEGATED} of each series would go down to the Campeonato de Portugal "
+                     "(not in this game, so they stay in Liga 3)")
+    else:
+        if i == 0:
+            parts.append("🟨 champions")
+        else:
+            parts.append(f"🟩 promotion (top {PROMOTION_SPOTS} go up to {LEAGUES[i - 1]})")
+            parts.append(f"🟦 3rd plays the 16th of {LEAGUES[i - 1]} in a two-legged play-off")
+        if i < len(LEAGUES) - 1:
+            parts.append(f"🟦 16th plays the 3rd of {LEAGUES[i + 1]} in a two-legged play-off")
+            parts.append(f"🟥 relegation (bottom {RELEGATION_SPOTS} go down to {LEAGUES[i + 1]})")
+    if i > 0 and group in ("League", "Championship"):
+        parts.append("B teams cannot be promoted to the division of their main club: the next club takes the place")
+    return " · ".join(parts) + " · your club is in bold"
+
+def render_league_table(league: str, group: str = "League"):
+    df = table_dataframe(ss.tables[league][group])
+    n = len(df)
+    zones = table_zones(league, group, list(df["Team"]))
+
+    def style_row(row):
+        bg = ZONE_BG.get(zones[df.index.get_loc(row.name)], "")
+        weight = "font-weight: 700;" if row["Team"] == ss.user_team else ""
+        css = (f"background-color: {bg};" if bg else "") + weight
+        return [css] * len(row)
+
+    st.dataframe(df.style.apply(style_row, axis=1), use_container_width=True, hide_index=True,
+                 height=min(40 + 35 * n, 780))
+    st.caption(zone_legend(league, group))
+    if group.startswith("Maintenance"):
+        st.caption("Starting points of this round: " + ", ".join(f"{t} +{ss.l3_bonus.get(t, 0)}" for t in df["Team"]))
+
+def render_league_groups(league: str):
+    """One table, or - for Liga 3 - the series / championship / maintenance tables to choose from."""
+    groups = list(ss.tables[league].keys())
+    if len(groups) == 1:
+        render_league_table(league, groups[0])
+        return
+    order = (["Championship", "Maintenance A", "Maintenance B", "Série A", "Série B"] if "Championship" in groups
+             else list(SERIES_NAMES))
+    mine = ss.team_group.get(ss.user_team) if league == user_league() else None
+    if mine in order:
+        order.remove(mine); order.insert(0, mine)
+    if "Championship" in groups:
+        st.caption("Liga 3 · 2nd phase. The 1st-phase series tables are the last two options.")
+    else:
+        st.caption(f"Liga 3 · 1st phase: two series of 10 clubs ({FIRST_PHASE_ROUNDS} rounds). The 2nd phase (Championship round and "
+                   "Maintenance round) starts when it ends.")
+    group = st.radio("Table", order, horizontal=True, key=f"group_{league}_{ss.season_no}_{ss.l3_phase}",
+                     format_func=lambda g: GROUP_LABELS.get(g, g) + (" ⭐" if g == mine else ""), label_visibility="collapsed")
+    render_league_table(league, group)
+
+def render_season_end_panel():
+    """Shown when the user's division is over: the result, the champions, who goes up and down, and the next season."""
+    res = ss.season_result or compute_season_result()
+    ss.season_result = res
+    st.success(f"🎉 The {res['season']} season is over! You finished **{_ordinal(res['user_pos'])}** in {res['user_league']}.")
+    verdict = {"Champions & promoted": "🏆⬆️ **Champions, and promoted** to " + res["next_league"] + "!",
+               "Champions": "🏆 **Champions** of " + res["user_league"] + "!",
+               "Promoted": "⬆️ **Promoted** to " + res["next_league"] + "!",
+               "Relegated": "⬇️ **Relegated** to " + res["next_league"] + ".",
+               "Stayed up": "✅ Safe: you stay in " + res["next_league"] + ".",
+               "Stayed": "You stay in " + res["next_league"] + "."}[res["outcome"]]
+    st.markdown(f"### {verdict}")
+    po = res.get("user_playoff")
+    if po:
+        other = po["upper"] if ss.user_team == po["lower"] else po["lower"]
+        won = po["winner"] == ss.user_team
+        st.markdown(f"**Play-off:** you {'won' if won else 'lost'} the two-legged tie against {other}"
+                    f" ({po['agg'][0] if ss.user_team == po['lower'] else po['agg'][1]}-"
+                    f"{po['agg'][1] if ss.user_team == po['lower'] else po['agg'][0]} on aggregate{', on penalties' if po['pens'] else ''}).")
+    rows = []
+    for lg in LEAGUES:
+        if lg not in res["champions"]:
+            continue
+        rows.append({"Division": f"{lg}", "Champions": res["champions"][lg],
+                     "⬆️ Promoted": ", ".join(res["promoted"].get(lg, [])) or "—",
+                     "⬇️ Relegated": ", ".join(res["relegated"].get(lg, [])) or "—"})
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    if res.get("playoffs"):
+        st.markdown("**Play-offs**")
+        po_rows = []
+        for po in res["playoffs"]:
+            (h1, a1, g1, g2), (h2, a2, g3, g4) = po["legs"]
+            po_rows.append({"Tie": f"{po['lower_league']} 3rd vs {po['upper_league']} 16th",
+                            "1st leg": f"{h1} {g1}-{g2} {a1}", "2nd leg": f"{h2} {g3}-{g4} {a2}",
+                            "Aggregate": f"{po['lower']} {po['agg'][0]}-{po['agg'][1]} {po['upper']}" + (" (pens)" if po["pens"] else ""),
+                            "Winner": po["winner"]})
+        st.dataframe(pd.DataFrame(po_rows), use_container_width=True, hide_index=True)
+    if MULTI_SEASON:
+        render_development(title="📈 Player development at the end of the season (applied when the next season starts)")
+        if st.button(f"➡️ Start the {season_label(ss.season_no + 1)} season in {res['next_league']}", type="primary",
+                     use_container_width=True, key=f"next_season_btn_{ss.season_no}"):
+            start_next_season()
+            ss.page = "squad"
+            st.rerun()
+
 def render_table():
     if not ss.season_started:
         render_need_season_prompt()
         return
-    st.subheader("📊 League Table")
-    st.dataframe(table_dataframe(ss.table), use_container_width=True, hide_index=True)
-    
+    st.subheader(f"📊 League Tables · {season_label()}")
+    if season_is_over():
+        render_season_end_panel()
+    leagues = [l for l in LEAGUES if l in ss.tables]
+    order = [user_league()] + [l for l in leagues if l != user_league()]
+    tabs = st.tabs([f"{l}" + (" ⭐" if l == user_league() else "") for l in order])
+    for tab, lg in zip(tabs, order):
+        with tab:
+            render_league_groups(lg)
+
+    if MULTI_SEASON and ss.past_seasons:
+        with st.expander(f"🗂️ Previous seasons ({len(ss.past_seasons)})"):
+            hist = pd.DataFrame([{
+                "Season": r["season"], "Your club": r["user_team"], "Division": r["user_league"],
+                "Finished": _ordinal(r["user_pos"]), "Outcome": r["outcome"],
+                **{f"{l} champions": r["champions"].get(l, "—") for l in LEAGUES}} for r in ss.past_seasons])
+            st.dataframe(hist, use_container_width=True, hide_index=True)
+
     st.divider()
     st.subheader("🥇 Player Statistics")
     
     stats_df = DF[['Player', 'Team', 'Position']].copy()
+    stats_df.insert(1, "League", stats_df["Team"].map(ss.league_of))
     stats_df['Goals'] = stats_df['Player'].map(ss.scorers).fillna(0).astype(int)
     stats_df['Assists'] = stats_df['Player'].map(ss.assists).fillna(0).astype(int)
     
@@ -3335,12 +4113,17 @@ def render_table():
         
     stats_df['Average Rating'] = stats_df['Player'].apply(get_avg)
     
-    col1, col2 = st.columns(2)
+    col0, col1, col2 = st.columns(3)
+    with col0:
+        league_filter = st.multiselect("Filter by Division", leagues, default=[user_league()], key=f"stat_league_filter_{user_league()}")
     with col1:
-        team_filter = st.multiselect("Filter by Team", ALL_TEAMS, key="stat_team_filter")
+        team_filter = st.multiselect("Filter by Team", sorted(t for l in (league_filter or leagues) for t in league_teams(l)),
+                                     key="stat_team_filter")
     with col2:
         pos_filter = st.multiselect("Filter by Position", POSITION_ORDER, key="stat_pos_filter")
-        
+
+    if league_filter:
+        stats_df = stats_df[stats_df['League'].isin(league_filter)]
     if team_filter:
         stats_df = stats_df[stats_df['Team'].isin(team_filter)]
     if pos_filter:
@@ -3375,24 +4158,32 @@ def render_fixtures():
     st.divider()
     st.subheader("🔀 Results Matrix")
     
-    teams = sorted(ALL_TEAMS)
+    shown = [l for l in LEAGUES if l in ss.schedules]
+    mx_league = st.selectbox("Division", shown, index=shown.index(user_league()), key="matrix_league",
+                             format_func=lambda l: f"{l}")
+    teams = league_teams(mx_league)
     matrix = pd.DataFrame(index=teams, columns=teams).fillna("-")
     for h in ss.history:
-        matrix.at[h["home"], h["away"]] = f"{h['hg']}-{h['ag']}"
+        if h.get("league") == mx_league:
+            matrix.at[h["home"], h["away"]] = f"{h['hg']}-{h['ag']}"
     
     st.dataframe(matrix.rename_axis("Home \\ Away").reset_index(), use_container_width=True, hide_index=True)
 
 def render_player_stats():
     st.subheader("📈 Player Attributes & Scouting")
     df = DF.copy()
+    df["League"] = df["Team"].map(ss.league_of).fillna(df["League"])       # the division the club plays in NOW
     
     search = st.text_input("🔍 Search Player by Name")
     if search:
         df = df[df["Player"].str.contains(search, case=False, na=False)]
         
-    col1, col2, col3 = st.columns(3)
+    col0, col1, col2, col3 = st.columns(4)
+    with col0:
+        divisions = st.multiselect("Filter by Division", LEAGUES)
+        if divisions: df = df[df["League"].isin(divisions)]
     with col1:
-        teams = st.multiselect("Filter by Team", ALL_TEAMS)
+        teams = st.multiselect("Filter by Team", sorted(df["Team"].unique()))
         if teams: df = df[df["Team"].isin(teams)]
     with col2:
         positions = st.multiselect("Filter by Position", POSITION_ORDER)
@@ -3413,9 +4204,13 @@ def render_player_stats():
         return
 
     df_display = add_grade_column(df, df).drop(
-        columns=["PlayerID", "OVR", "Season", "League", "season", "league"], 
+        columns=["PlayerID", "OVR", "Season", "season", "league"], 
         errors="ignore"
     )
+    if "League" in df_display.columns:                       # League right after Team
+        cols = [c for c in df_display.columns if c != "League"]
+        cols.insert(cols.index("Team") + 1 if "Team" in cols else 0, "League")
+        df_display = df_display[cols]
     st.dataframe(style_player_attributes(df_display), use_container_width=True, hide_index=True)
 
 # --------------------------------------------------------------------------
@@ -3424,6 +4219,7 @@ def render_player_stats():
 def season_player_table() -> pd.DataFrame:
     """One row per player who has played, with appearances, goals, assists and average match rating."""
     df = DF[["Player", "Team", "Position"]].copy()
+    df["League"] = df["Team"].map(ss.league_of)
     df["Apps"] = df["Player"].map(ss.player_ratings_count).fillna(0).astype(int)
     df["Goals"] = df["Player"].map(ss.scorers).fillna(0).astype(int)
     df["Assists"] = df["Player"].map(ss.assists).fillna(0).astype(int)
@@ -3456,10 +4252,10 @@ def pick_team_of_season(players: pd.DataFrame, formation: str, min_apps: int) ->
     order = {code: i for i, code in enumerate(FORMATIONS[formation])}
     return pd.DataFrame(rows).sort_values("Label", key=lambda s: s.map(order)).reset_index(drop=True)
 
-def best_player_per_team(players: pd.DataFrame, min_apps: int) -> pd.DataFrame:
-    """Each club's best performer (highest average rating), listed in league-table order."""
+def best_player_per_team(players: pd.DataFrame, min_apps: int, league: str = None) -> pd.DataFrame:
+    """Each club's best performer (highest average rating), listed in the league-table order of a division."""
     eligible = players[players["Apps"] >= min_apps]
-    standings = table_dataframe(ss.table)
+    standings = standings_df(league)
     rows = []
     for pos, team in zip(standings.index, standings["Team"]):
         pool = eligible[eligible["Team"] == team]
@@ -3533,6 +4329,7 @@ def _card_text(font, text) -> str:
     return "".join(ch if ch.isascii() or _font_has_glyph(font, ch) else (_safe_ascii(ch) or "?") for ch in text)
 
 def _short_name(name: str, limit: int = 13) -> str:
+    name = clean_name(name)
     parts = str(name).split()
     s = parts[-1] if len(parts) > 1 else str(name)
     return s if len(s) <= limit else s[:limit - 1] + "…"
@@ -3571,9 +4368,15 @@ def _draw_pitch(d, box, xi: pd.DataFrame, formation: str, title: str, subtitle: 
 def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: str = "4-3-3") -> bytes:
     """The user's season on one image: final league table, Team of the Season, and the club's own best XI."""
     from PIL import Image, ImageDraw
-    standings = table_dataframe(ss.table)
+    league = user_league()
+    overall = standings_df(league)
     team = ss.user_team
-    pos = int(standings.index[standings["Team"] == team][0])
+    pos = int(overall.index[overall["Team"] == team][0])          # finishing position in the division
+    # the table on the card is the one the club played its season in (for Liga 3: its championship / maintenance round)
+    standings = group_table_df(team) if has_series(league) and ss.team_group.get(team) != "League" else overall
+    group = ss.team_group.get(team, "League")
+    players = players[players["League"] == league]                 # the Team of the Season is that of the user's division
+    result = ss.season_result or {}
     me = standings[standings["Team"] == team].iloc[0]
     exp = TEAM_STRENGTH_DATA.get(team, {}).get("exp_rank")
     tos = pick_team_of_season(players, tos_formation, min_apps)
@@ -3616,7 +4419,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
 
     # header
     d.rectangle([0, 0, W, 6], fill=pink)
-    d.text((40, 28), "LIGA PORTUGAL MANAGER · SEASON REPORT CARD", font=fonts["small"], fill=pink)
+    d.text((40, 28), f"LIGA PORTUGAL MANAGER · {league.upper()} {season_label()} · SEASON REPORT CARD", font=fonts["small"], fill=pink)
     d.text((40, 54), str(team), font=fonts["h1"], fill=(255, 255, 255))
     if style_line:
         d.rounded_rectangle([40, 108, 40 + int(d.textlength(style_line, font=fonts["body_b"])) + 28, 140], radius=16, fill=card, outline=pink, width=2)
@@ -3630,22 +4433,33 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
         verdict = (f"{diff} place{'s' if diff != 1 else ''} above expectation" if diff > 0
                    else f"{-diff} place{'s' if diff != -1 else ''} below expectation" if diff < 0 else "right on expectation")
         d.text((W - 40, 126), f"Pre-season expectation #{exp:.1f} · {verdict}", font=fonts["small"], fill=muted, anchor="ra")
+    outcome = result.get("outcome")
+    if outcome and outcome not in ("Stayed", "Stayed up"):
+        label = {"Champions & promoted": f"CHAMPIONS · PROMOTED TO {str(result.get('next_league', '')).upper()}",
+                 "Champions": f"CHAMPIONS OF {league.upper()}", "Promoted": f"PROMOTED TO {str(result.get('next_league', '')).upper()}",
+                 "Relegated": f"RELEGATED TO {str(result.get('next_league', '')).upper()}"}.get(outcome, outcome.upper())
+        up = outcome != "Relegated"
+        col = (34, 197, 94) if up else (239, 68, 68)
+        wd = int(d.textlength(label, font=fonts["body_b"])) + 28
+        d.rounded_rectangle([W - 40 - wd, 152, W - 40, 184], radius=16, fill=card, outline=col, width=2)
+        d.text((W - 54, 168), label, font=fonts["body_b"], fill=col, anchor="rm")
 
     # league table (left)
     tx0, ty0, tx1 = 40, 208, 560
     n = len(standings)
     row_h = min(34, (H - ty0 - 140) // (n + 1))
-    d.text((tx0, ty0 - 38), "Final league table", font=fonts["h2"], fill=(255, 255, 255))
+    d.text((tx0, ty0 - 38), f"Final table · {league}" + (f" · {GROUP_LABELS[group]}" if group != "League" else ""), font=fonts["h2"], fill=(255, 255, 255))
     d.rounded_rectangle([tx0, ty0, tx1, ty0 + row_h * (n + 1) + 8], radius=12, fill=card)
     cols = [("#", tx0 + 14, "la"), ("Team", tx0 + 52, "la"), ("P", tx0 + 330, "ra"), ("GD", tx0 + 400, "ra"), ("Pts", tx0 + 490, "ra")]
     for label, cx, anc in cols:
         d.text((cx, ty0 + 8), label, font=fonts["small"], fill=muted, anchor=anc)
+    card_zones = table_zones(league, group, list(standings["Team"]))
     for i, (p, r) in enumerate(standings.iterrows()):
         y = ty0 + row_h * (i + 1) + 4
         is_me = r["Team"] == team
         if is_me:
             d.rounded_rectangle([tx0 + 6, y - 2, tx1 - 6, y + row_h - 4], radius=8, fill=(88, 18, 52))
-        zone = (250, 204, 21) if p == 1 else (34, 197, 94) if p <= 3 else (239, 68, 68) if p > n - 3 else None
+        zone = {"champion": (250, 204, 21), "promotion": (34, 197, 94), "playoff": (59, 130, 246), "relegation": (239, 68, 68)}.get(card_zones[i])
         if zone:
             d.rectangle([tx0 + 6, y, tx0 + 10, y + row_h - 6], fill=zone)
         f = fonts["body_b"] if is_me else fonts["body"]
@@ -3668,7 +4482,7 @@ def build_report_card_png(players: pd.DataFrame, min_apps: int, tos_formation: s
     # pitches (right)
     py0, ph, pw = 250, 540, 400
     _draw_pitch(d, (610, py0, 610 + pw, py0 + ph), tos, tos_formation, "Team of the Season",
-                f"Best XI of the league · {tos_formation}", (250, 204, 21), fonts)
+                f"Best XI of {league} · {tos_formation}", (250, 204, 21), fonts)
     _draw_pitch(d, (1060, py0, 1060 + pw, py0 + ph), my_xi, ss.formation, f"{team}'s Starting XI",
                 f"Your lineup from Squad & Tactics · {formation_label(ss.formation)}", pink, fonts)
 
@@ -3696,7 +4510,7 @@ def render_share_widget(png: bytes, team: str, place: str):
     """Share buttons for the report card. The phone / browser share sheet can send the image itself; the network
     links can only carry the text, so the image is attached by hand (download or copy it first)."""
     from urllib.parse import quote
-    text = f"{team} finished {place} in my Liga Portugal Manager season! ⚽🏆"
+    text = f"{team} finished {place} in my Liga Portugal Manager season! ⚽🏆" + (f" {ss.season_result['outcome']}!" if ss.get("season_result") and ss.season_result.get("outcome") not in (None, "Stayed", "Stayed up") else "")
     q = quote(text)
     b64 = base64.b64encode(png).decode()
     html = f"""
@@ -3740,25 +4554,32 @@ def render_awards():
     if not ss.season_started:
         render_need_season_prompt()
         return
-    st.subheader("🏆 Season Awards")
+    st.subheader(f"🏆 Season Awards · {season_label()}")
 
-    players = season_player_table()
-    if players.empty:
+    all_players = season_player_table()
+    if all_players.empty:
         st.info("No player statistics yet. Play some matches first!")
+        return
+
+    shown = [l for l in LEAGUES if l in ss.tables]
+    league = st.selectbox("Division", shown, index=shown.index(user_league()), key=f"awards_league_{ss.season_no}",
+                          format_func=lambda l: f"{l}" + (" (your division)" if l == user_league() else ""))
+    players = all_players[all_players["League"] == league].reset_index(drop=True)
+    if players.empty:
+        st.info("No player statistics yet in this division.")
         return
 
     total = len(ss.schedule)
     season_over = ss.matchday >= total
-    min_apps = max(1, round(0.45 * ss.matchday))
+    rounds_played = min(ss.matchday, len(ss.schedules.get(league, [])))
+    min_apps = max(1, round(0.45 * rounds_played))
     if season_over:
         st.success("🎉 The season is over. These are the final awards.")
         if ss.get("season_log_saved"):
             st.caption("📒 Your season was added to the results log.")
-        else:
-            render_log_retry()
     else:
         st.info(f"Provisional awards after matchday {ss.matchday} of {total}. The final awards are decided when the season ends.")
-    st.caption(f"Eligible players: at least {min_apps} appearances. If a position or club has no eligible player, "
+    st.caption(f"Awards of {league}. Eligible players: at least {min_apps} appearances. If a position or club has no eligible player, "
                "the best of the rest is used.")
 
     eligible = players[players["Apps"] >= min_apps]
@@ -3779,11 +4600,14 @@ def render_awards():
     st.divider()
     st.markdown("### 🧾 Season Report Card")
     if season_over:
-        st.caption("Your league finish, the Team of the Season and your club's best XI on one image, ready to share.")
+        st.caption("Your league finish, promotion or relegation, the Team of the Season and your club's best XI on one image, ready to share.")
         try:
-            card_png = build_report_card_png(players, min_apps)
+            my_players = all_players[all_players["League"] == user_league()]
+            my_min = max(1, round(0.45 * min(ss.matchday, len(ss.schedule))))
+            card_png = build_report_card_png(my_players, my_min)
             st.image(card_png, use_container_width=True)
-            place = _ordinal(int(table_dataframe(ss.table).index[table_dataframe(ss.table)["Team"] == ss.user_team][0]))
+            _st = standings_df()
+            place = _ordinal(int(_st.index[_st["Team"] == ss.user_team][0])) + f" in {user_league()}"
             menu = (st.popover("📤 Share your report card", use_container_width=True) if hasattr(st, "popover")
                     else st.expander("📤 Share your report card"))
             with menu:
@@ -3798,7 +4622,7 @@ def render_awards():
                 "Season and your club's best XI.")
 
     st.divider()
-    st.markdown("### ⭐ Team of the Season")
+    st.markdown(f"### ⭐ Team of the Season · {league}")
     formations = PRESET_FORMATIONS
     formation = st.selectbox("Formation", formations, index=formations.index("4-3-3"), key="awards_formation")
     tos = pick_team_of_season(players, formation, min_apps)
@@ -3812,13 +4636,13 @@ def render_awards():
             tos[["Label", "Player", "Team", "Apps", "Goals", "Assists", "Rating"]].rename(columns={"Label": "Pos"}),
             hide_index=True, use_container_width=True,
         )
-        st.caption(f"Average rating of the XI: **{tos['Rating'].mean():.2f}** · "
-                   f"{int((tos['Team'] == ss.user_team).sum())} player(s) from {ss.user_team}")
+        st.caption(f"Average rating of the XI: **{tos['Rating'].mean():.2f}**"
+                   + (f" · {int((tos['Team'] == ss.user_team).sum())} player(s) from {ss.user_team}" if league == user_league() else ""))
 
     st.divider()
-    st.markdown("### 🌟 Best Performing Player of Each Team")
+    st.markdown(f"### 🌟 Best Performing Player of Each Team · {league}")
     st.caption("Highest average match rating at each club, in league-table order. Your club is highlighted.")
-    best_df = best_player_per_team(players, min_apps)
+    best_df = best_player_per_team(players, min_apps, league)
 
     def highlight_user(row):
         return ["background-color: rgba(255, 47, 123, 0.18); font-weight: 700" if row["Team"] == ss.user_team else ""
@@ -3840,13 +4664,13 @@ LOG_SHEETS = {
                 "Style: matches used", "Avg squad fit %", "Main mentality", "Main tempo", "Main defensive line", "Main pressing",
                 "Main passing", "Main defensive stance", "Main attacking preference", "Avg xG for", "Avg xG against",
                 "Avg possession %", "Yellow cards", "Red cards", "Top scorer (club)", "Top scorer goals", "Best player (avg rating)",
-                "Best player rating", "Tactic changes during season"],
+                "Best player rating", "Tactic changes during season", "League", "Season", "Outcome"],
     "Matches": ["Season ID", "Club", "Matchday", "Venue", "Opponent", "Result", "GF", "GA", "Score", "Formation", "Mentality",
                 "Tempo", "Defensive line", "Pressing", "Passing", "Defensive stance", "Attacking preference", "Type of play",
                 "Squad fit %", "xG for", "xG against", "Possession %", "Yellow cards", "Red cards", "Club scorers"],
     "Scorers": ["Season ID", "Club (user)", "Player", "Team", "Position", "Apps", "Goals", "Assists", "Avg rating", "Own club?"],
     "Lineups": ["Season ID", "Club (user)", "Formation", "Slot", "Player", "Position", "Role", "Apps", "Goals", "Assists", "Avg rating"],
-    "Final table": ["Season ID", "Pos", "Team", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "User club?"],
+    "Final table": ["Season ID", "Pos", "Team", "P", "W", "D", "L", "GF", "GA", "GD", "Pts", "User club?", "League", "Season"],
 }
 
 def _mode(values):
@@ -3868,21 +4692,23 @@ def get_engine():
 def _append_rows_to_log(rows_by_sheet: dict) -> bool:
     """Append the season to the Supabase / Postgres tables (created on the first save). All tables or none."""
     engine = get_engine()
+    from sqlalchemy import inspect, text
     with engine.begin() as conn:
         for sheet, rows in rows_by_sheet.items():
             if not rows:
                 continue
             df = pd.DataFrame(rows, columns=[_db_name(c) for c in LOG_SHEETS[sheet]]).astype(object)
             df = df.where(df.ne(""), None)                      # empty text -> NULL
-            df.to_sql(_db_name(sheet), conn, if_exists="append", index=False)
+            df = df.apply(lambda col: col.map(clean_name))      # no invisible player-name markers in the database
+            table = _db_name(sheet)
+            insp = inspect(conn)
+            if insp.has_table(table):                           # tables made before the divisions existed get the new columns
+                have = {c["name"] for c in insp.get_columns(table)}
+                for col in df.columns:
+                    if col not in have:
+                        conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{col}" TEXT'))
+            df.to_sql(table, conn, if_exists="append", index=False)
     return True
-
-def render_log_retry():
-    """Retry button for a failed save (the season is still in memory)."""
-    if st.button("🔁 Retry saving my season", key=f"retry_log_{ss.get('page')}"):
-        ss.season_logged = False
-        log_finished_season()
-        st.rerun()
 
 def log_finished_season():
     """Called once when the last matchday has been played. Never lets a logging problem reach the game."""
@@ -3894,7 +4720,8 @@ def log_finished_season():
         if "session_id" not in ss:
             ss["session_id"] = uuid.uuid4().hex[:8]
         team = ss.user_team
-        standings = table_dataframe(ss.table)
+        league = user_league()
+        standings = standings_df(league)
         pos = int(standings.index[standings["Team"] == team][0])
         me = standings[standings["Team"] == team].iloc[0]
         stamp = datetime.now(timezone.utc)
@@ -3903,6 +4730,7 @@ def log_finished_season():
         matches = [h for h in ss.history if h.get("user_match")]
         um = [h["user_match"] for h in matches]
         players = season_player_table()
+        players = players[players["League"] == league]           # the log is about the user's division
         mine = players[players["Team"] == team]
         best = _rank_by_performance(mine).iloc[0] if len(mine) else None
         boot = mine.sort_values(["Goals", "Assists", "Rating"], ascending=False).iloc[0] if len(mine) else None
@@ -3924,6 +4752,7 @@ def log_finished_season():
             round(sum(m["possession"] for m in um) / n, 1), sum(m["yellows"] for m in um), sum(m["reds"] for m in um),
             boot["Player"] if boot is not None else "", int(boot["Goals"]) if boot is not None else "",
             best["Player"] if best is not None else "", float(best["Rating"]) if best is not None else "", changes,
+            league, season_label(), (ss.season_result or {}).get("outcome", ""),
         ]
 
         match_rows = []
@@ -3945,7 +4774,7 @@ def log_finished_season():
                         float(r["Rating"]), "Yes" if r["Team"] == team else "No"]
                        for _, r in scorer_pool.sort_values(["Goals", "Assists"], ascending=False).iterrows()]
         table_rows = [[season_id, int(p), r["Team"], int(r["P"]), int(r["W"]), int(r["D"]), int(r["L"]), int(r["GF"]), int(r["GA"]),
-                       int(r["GD"]), int(r["Pts"]), "Yes" if r["Team"] == team else "No"] for p, r in standings.iterrows()]
+                       int(r["GD"]), int(r["Pts"]), "Yes" if r["Team"] == team else "No", league, season_label()] for p, r in standings.iterrows()]
 
         by_name = players.set_index("Player")
         covered = (ss.get("cover") or {}).get("slots", {})

@@ -1,328 +1,825 @@
-Player,Team,Position,Goal.Scoring,Assist.Creation,Attack,Dribbling,Possession,Defense,Physical,Goalkeeping
-João Palhinha,Benfica,MF,16,10,8,1,7,17,7,0
-A. Circati,Benfica,CB,9,8,7,6,8,16,12,0
-J. Kamiński,Benfica,AM & W,11,7,11,11,8,12,12,0
-C. Lenglet,Benfica,CB,6,12,9,13,15,8,11,0
-A. Bah,Benfica,FB & WB,17,14,13,9,11,15,11,0
-Samuel Soares,Benfica,GK,0,0,0,0,0,0,0,13
-Jos� Neto,Benfica,FB & WB,16,5,11,6,11,12,12,0
-Daniel Banjaqui,Benfica,FB & WB,10,9,9,7,10,5,10,0
-Sergi Altimira,Sporting CP,MF,10,8,8,9,14,13,15,0
-Nuno Santos,Sporting CP,FB & WB,18,19,16,11,18,5,6,0
-Rafael Nel,Sporting CP,CF,12,12,12,13,9,11,14,0
-Fl�vio Gon�alves,Sporting CP,AM & W,16,10,13,11,17,11,13,0
-André Silva,Porto,CF,14,8,10,7,11,8,9,0
-Jo�o Costa,Porto,GK,0,0,0,0,0,0,0,10
-C. Smalling,Porto,CB,14,11,10,7,7,9,10,0
-O. Pietuszewski,Porto,AM & W,14,7,13,12,10,10,11,0
-Thiago Carvalho,Vitória SC,CB,15,6,12,11,9,13,13,0
-Óscar Rivas,Vitória SC,CB,12,6,13,16,12,9,14,0
-Z. Debast,Sporting CP,CB,4,17,11,16,19,7,11,0
-Gonçalo Inácio,Sporting CP,CB,12,18,12,13,18,7,12,0
-Eduardo Quaresma,Sporting CP,CB,15,18,15,16,19,9,13,0
-B. Arrey-Mbi,SC Braga,CB,3,11,5,5,10,8,8,0
-S. Niakaté,SC Braga,CB,11,11,13,11,15,9,12,0
-G. Lagerbielke,SC Braga,CB,16,9,11,7,14,8,10,0
-Vitor Carvalho,SC Braga,CB,16,18,12,7,10,10,9,0
-Henrique Silva,Santa Clara,CB,6,6,7,9,6,11,6,0
-Gustavo Mancha,Rio Ave,CB,7,11,9,7,14,9,12,0
-Nelson Abbey,Rio Ave,CB,3,14,12,19,4,8,13,0
-F. Petrasso,Rio Ave,CB,5,10,8,9,6,6,10,0
-J. Brabec,Rio Ave,CB,9,9,8,8,10,11,8,0
-J. Kiwior,Porto,CB,9,12,12,15,13,13,17,0
-J. Bednarek,Porto,CB,11,10,9,10,16,14,15,0
-Zé Vitor,Nacional,CB,16,10,13,11,9,14,9,0
-Léo Santos,Nacional,CB,17,15,17,17,8,11,13,0
-Gilberto Batista,Moreirense,CB,4,6,5,7,10,12,9,0
-Maracás,Moreirense,CB,14,6,7,3,10,9,6,0
-I. Ba,Sporting CP,CB,11,10,11,12,12,14,14,0
-L. Realpe,Famalicão,CB,14,12,12,9,10,10,9,0
-A. Chernev,Estrela Amadora,CB,9,6,10,12,6,5,8,0
-Luan Patrick,Estrela Amadora,CB,3,9,8,14,12,13,10,0
-Bernardo Schappo,Estrela Amadora,CB,7,11,9,10,11,15,14,0
-Ferro,Estoril,CB,15,6,8,4,9,13,7,0
-Kaly,Casa Pia AC,CB,4,9,6,9,6,16,13,0
-David Sousa,Casa Pia AC,CB,16,6,14,15,10,15,14,0
-João Goulart,Casa Pia AC,CB,7,6,9,11,5,10,9,0
-André Geraldes,Casa Pia AC,CB,5,6,7,10,4,3,5,0
-Tomás Araújo,Benfica,CB,15,14,18,19,17,8,14,0
-B. Popović,Arouca,CB,10,6,8,9,8,10,9,0
-José Fontán,Arouca,CB,14,14,13,13,17,9,11,0
-Javi Sánchez,Arouca,CB,6,16,7,7,11,16,10,0
-B. Meupiyou,Alverca,CB,5,11,10,15,8,6,11,0
-Sergi Gómez,Alverca,CB,4,7,4,3,6,5,7,0
-T. Strata,Vitória SC,FB & WB,11,12,15,18,15,9,13,0
-Miguel Maga,Vitória SC,FB & WB,4,6,4,4,14,8,8,0
-João Mendes,Vitória SC,FB & WB,7,10,8,9,16,9,8,0
-Iván Fresneda,Sporting CP,FB & WB,14,8,15,18,11,15,18,0
-G. Vagiannidis,Sporting CP,FB & WB,12,16,15,14,10,11,17,0
-M. Araújo,Sporting CP,FB & WB,19,15,16,12,15,10,9,0
-Mario Dorgeles,SC Braga,FB & WB,18,13,14,9,11,5,11,0
-Gabri Martínez,SC Braga,FB & WB,16,15,19,20,9,9,14,0
-Víctor Gómez,SC Braga,FB & WB,13,15,13,11,13,9,8,0
-Lucas Soares,Santa Clara,FB & WB,6,9,9,9,11,7,6,0
-M. Vrousai,Rio Ave,FB & WB,13,9,12,9,15,16,14,0
-Martim Fernandes,Porto,FB & WB,10,6,7,7,11,13,9,0
-Alberto Costa,Porto,FB & WB,13,18,16,16,8,13,14,0
-Francisco Moura,Porto,FB & WB,18,13,15,12,15,9,11,0
-Z. Sanusi,Porto,FB & WB,15,11,14,14,12,10,18,0
-José Gomes,Nacional,FB & WB,12,15,12,11,5,10,9,0
-Kiko,Moreirense,FB & WB,11,4,7,5,10,13,6,0
-Dinis Pinto,Moreirense,FB & WB,12,14,11,9,5,14,12,0
-Zé Carlos,Rio Ave,FB & WB,4,6,6,9,8,10,9,0
-Pedro Bondo,Famalicão,FB & WB,4,6,6,8,9,16,10,0
-Rodrigo Pinheiro,Famalicão,FB & WB,15,14,15,15,14,10,14,0
-Rafa Soares,Estrela Amadora,FB & WB,12,9,10,9,15,6,5,0
-J. Encada,Estrela Amadora,FB & WB,5,9,11,18,5,8,14,0
-Pedro Carvalho,Estoril,FB & WB,9,7,11,13,9,7,12,0
-Ricard Sánchez,Estoril,FB & WB,16,14,14,10,13,5,7,0
-Abdu Conté,Casa Pia AC,FB & WB,4,11,8,10,10,4,7,0
-S. Dahl,Benfica,FB & WB,10,8,11,13,16,10,15,0
-Tiago Esgaio,Arouca,FB & WB,16,16,10,3,13,11,6,0
-Francisco Chissumba,Alverca,FB & WB,8,6,8,7,9,8,9,0
-I. James,Alverca,FB & WB,7,14,10,11,6,11,9,0
-Diogo Spencer,Alverca,FB & WB,12,9,10,11,13,4,7,0
-Nabil Touaizi,Alverca,FB & WB,11,15,14,16,11,8,12,0
-Gonçalo Nogueira,Vitória SC,MF,9,14,14,15,5,13,16,0
-Beni,Vitória SC,MF,7,6,6,8,9,14,12,0
-J. Gorby,SC Braga,MF,9,6,9,11,13,8,11,0
-João Moutinho,SC Braga,MF,9,14,11,12,17,14,10,0
-José Tavares,Santa Clara,MF,5,6,9,12,8,12,10,0
-Pedro Ferreira,Santa Clara,MF,7,5,8,9,10,16,10,0
-B. Aguilera,Rio Ave,MF,8,9,10,12,10,4,9,0
-A. Ntoi,Rio Ave,MF,10,10,8,6,6,12,9,0
-T. Nikitscher,Rio Ave,MF,11,8,8,7,6,15,11,0
-V. Froholdt,Porto,MF,19,12,18,19,4,10,17,0
-Gabri Veiga,Porto,MF,17,17,18,17,7,5,10,0
-A. Varela,Porto,MF,9,10,10,9,15,11,10,0
-P. Rosario,Porto,MF,15,7,12,13,18,14,14,0
-Matheus Dias,Nacional,MF,7,8,5,4,8,15,9,0
-C. Labidi,Nacional,MF,11,8,9,7,5,13,4,0
-Liziero,Nacional,MF,7,17,10,9,12,12,10,0
-M. Stjepanović,Moreirense,MF,8,5,5,3,11,9,4,0
-Rodri Alonso,Moreirense,MF,17,15,14,11,12,3,6,0
-M. De Amorim,Famalicão,MF,17,14,16,15,9,10,11,0
-T. Van De Looi,Famalicão,MF,3,6,4,4,11,7,9,0
-Robinho,Estrela Amadora,MF,8,13,11,10,7,11,7,0
-Paulo Moreira,Famalicão,MF,14,10,11,11,7,7,9,0
-A. Tsoungui,Estoril,MF,3,10,7,8,10,15,11,0
-J. Holsgrove,Estoril,MF,5,17,10,14,16,12,13,0
-João Carvalho,Estoril,MF,18,17,18,17,14,3,9,0
-S. Pérez,Casa Pia AC,MF,2,9,3,3,6,9,3,0
-E. Barrenechea,Benfica,MF,9,7,7,5,15,15,11,0
-F. Aursnes,Benfica,MF,16,15,16,14,15,9,13,0
-T. Fukui,Arouca,MF,12,14,12,13,14,12,16,0
-E. Van Ee,Arouca,MF,9,9,7,9,12,12,11,0
-S. Abdulai,Alverca,MF,5,5,7,10,4,10,14,0
-Landerson,Moreirense,AM & W,2,8,7,12,10,10,13,0
-G. Prestianni,Benfica,AM & W,12,17,16,17,12,14,15,0
-William Gomes,Porto,AM & W,19,9,17,17,12,11,10,0
-C. Nuozzi,Alverca,AM & W,6,3,6,6,6,9,10,0
-A. Schjelderup,Benfica,AM & W,18,16,17,15,12,10,15,0
-Diogo Travassos,SC Braga,AM & W,8,7,10,13,12,13,9,0
-H. Sudakov,Benfica,AM & W,12,12,10,8,15,9,9,0
-I. Stoica,Estrela Amadora,AM & W,9,6,8,8,7,9,10,0
-Lee Hyun-Ju,Arouca,AM & W,15,5,10,9,9,8,10,0
-P. Lima,Sporting CP,AM & W,8,8,5,3,10,16,10,0
-Diogo Bezerra,Rio Ave,AM & W,3,12,12,17,7,8,11,0
-Pablo Ruan,Nacional,CF,3,7,5,7,5,14,8,0
-Figueiredo,Alverca,AM & W,16,7,13,13,10,8,12,0
-Telmo Arcanjo,Vitória SC,AM & W,2,10,8,12,12,5,9,0
-Brenner,Santa Clara,AM & W,8,7,14,17,2,8,9,0
-Pablo Gozálbez,Arouca,AM & W,6,10,7,4,12,14,4,0
-Geny Catamo,Sporting CP,AM & W,15,14,16,16,18,10,16,0
-Sorriso,Famalicão,AM & W,13,13,12,9,10,14,10,0
-Borja Sainz,Porto,AM & W,16,7,11,6,6,14,8,0
-M. Ayomide,Estrela Amadora,AM & W,10,14,11,11,14,12,15,0
-A. Trezza,Arouca,AM & W,14,8,9,8,6,7,4,0
-Chiquinho,Alverca,AM & W,7,16,11,12,7,8,11,0
-N. Djouahra,Arouca,AM & W,8,10,6,9,12,9,10,0
-Leandro Barreiro,Benfica,AM & W,13,9,6,1,8,17,10,0
-Rodrigo Zalazar,Sporting CP,AM & W,16,16,15,13,14,11,13,0
-D. Špikić,Rio Ave,AM & W,8,12,10,12,6,9,11,0
-Vinícius Lopes,Santa Clara,AM & W,15,3,9,7,9,13,10,0
-J. Livolant,Casa Pia AC,AM & W,5,10,7,9,9,12,11,0
-Pepê,Porto,AM & W,9,11,10,12,16,9,10,0
-Gil Dias,Famalicão,AM & W,9,16,12,14,13,13,14,0
-Samu,Vitória SC,AM & W,14,8,8,3,15,16,7,0
-Kiko Bondoso,Moreirense,AM & W,1,10,5,9,13,7,11,0
-Ricardo Horta,SC Braga,AM & W,18,16,11,2,18,10,7,0
-Rafa Silva,Benfica,AM & W,19,8,12,5,13,9,11,0
-O. Camara,Vitória SC,CF,8,12,11,15,14,10,13,0
-Samu Omorodion,Porto,CF,18,6,12,8,14,6,10,0
-Pau Víctor,SC Braga,CF,14,14,15,16,16,13,13,0
-Gabriel Silva,SC Braga,CF,7,9,12,17,12,11,12,0
-D. Nandín,Arouca,CF,4,16,8,9,6,14,11,0
-A. Ndoye,Vitória SC,CF,10,7,8,4,2,13,10,0
-Y. Begraoui,Estoril,CF,16,8,12,11,13,10,8,0
-André Lacximicant,Estoril,CF,10,13,14,16,8,9,14,0
-J. Blesa,Rio Ave,CF,17,7,13,9,14,13,12,0
-Gustavo Silva,Vitória SC,CF,12,12,16,17,10,16,16,0
-Alan,Vitória SC,CF,3,15,10,15,17,7,10,0
-Iván Barbero,Arouca,CF,11,10,8,5,10,12,7,0
-V. Pavlidis,Benfica,CF,17,13,14,10,12,11,12,0
-R. Guitane,Estoril,CF,6,17,14,20,16,10,15,0
-L. Suárez,Sporting CP,CF,18,18,17,14,13,11,14,0
-Fran Navarro,SC Braga,CF,15,7,7,2,8,7,4,0
-Cassiano,Casa Pia AC,CF,8,8,4,4,3,16,7,0
-J. Castillo,Vitória SC,GK,0,0,0,0,0,0,0,10
-Rui Silva,Sporting CP,GK,0,0,0,0,0,0,0,13
-C. Miszta,Rio Ave,GK,0,0,0,0,0,0,0,10
-Diogo Costa,Porto,GK,0,0,0,0,0,0,0,14
-Kaique,Sporting CP,GK,0,0,0,0,0,0,0,14
-André Ferreira,Moreirense,GK,0,0,0,0,0,0,0,12
-L. Carević,Famalicão,GK,0,0,0,0,0,0,0,12
-Joel Robles,Estoril,GK,0,0,0,0,0,0,0,4
-P. Sequeira,Casa Pia AC,GK,0,0,0,0,0,0,0,9
-A. Trubin,Benfica,GK,0,0,0,0,0,0,0,13
-I. De Arruabarrena,Arouca,GK,0,0,0,0,0,0,0,11
-André Gomes,Casa Pia AC,GK,0,0,0,0,0,0,0,4
-Víctor Rofino,Famalicão,CB,14,16,13,12,17,11,11,0
-Emanuel Fernandes,Santa Clara,CB,17,6,14,13,12,7,10,0
-Felipe Silva,Casa Pia AC,CB,6,11,4,4,14,9,7,0
-N. Michelis,Académico de Viseu F.C.,CB,10,11,7,7,14,13,14,0
-A. Correia,Académico de Viseu F.C.,CB,12,9,11,13,11,5,8,0
-Romain Correia,Marítimo,CB,14,11,12,11,11,6,9,0
-Pedro Barcelos,Académico de Viseu F.C.,CB,6,8,9,11,14,9,9,0
-Gu Costa,Académico de Viseu F.C.,FB & WB,11,13,12,13,12,14,13,0
-Tiago Parente,Estoril,FB & WB,6,11,10,11,13,8,6,0
-Robinho,Académico de Viseu F.C.,FB & WB,5,10,6,7,17,15,10,0
-Paulo Henrique,Marítimo,FB & WB,11,10,10,9,11,13,10,0
-Igor Julião,Marítimo,FB & WB,5,6,7,12,8,15,14,0
-Tiago Brito,Estoril,MF,10,7,13,15,15,16,18,0
-Marco Cruz,Vitória SC,MF,6,8,9,9,8,11,8,0
-Dani Borges,Santa Clara,MF,19,13,13,7,12,14,12,0
-Guilherme Liberato,Moreirense,MF,4,8,7,10,11,11,12,0
-S. Messeguem,Académico de Viseu F.C.,MF,10,18,13,13,10,13,11,0
-Gabi Pereira,Casa Pia AC,MF,9,12,12,14,13,10,14,0
-V. Danilović,Marítimo,MF,5,6,5,8,16,13,13,0
-Raphael Guzzo,Marítimo,MF,15,17,14,11,16,8,7,0
-Luís Silva,Académico de Viseu F.C.,MF,8,10,4,2,9,13,6,0
-Tiago Andrade,Moreirense,AM & W,10,9,10,12,5,13,11,0
-João Rêgo,Casa Pia AC,AM & W,7,3,8,10,10,13,14,0
-Manuel Mendonça,Moreirense,AM & W,5,9,7,7,16,12,8,0
-Martín Tejón,Marítimo,AM & W,11,15,14,14,16,10,9,0
-Á. Zamora,Académico de Viseu F.C.,AM & W,17,11,13,9,10,7,6,0
-João Guilherme,Académico de Viseu F.C.,AM & W,17,12,13,9,3,14,11,0
-B. Simo,Marítimo,AM & W,16,17,13,8,15,13,10,0
-C. Kahraman,Académico de Viseu F.C.,AM & W,13,19,10,5,13,8,6,0
-L. Vonić,Moreirense,CF,10,5,7,9,13,9,9,0
-Tiago Ribeiro,Santa Clara,CF,1,17,7,10,18,11,6,0
-Adrián Butzke,Marítimo,CF,17,14,14,9,12,11,14,0
-Andre Clóvis,Académico de Viseu F.C.,CF,19,11,12,7,7,6,9,0
-Vitor Hugo,Rio Ave,GK,0,0,0,0,0,0,0,9
-Vasconcelos,Santa Clara,AM & W,9,11,8,7,12,8,9,0
-B. Souza,Estrela Amadora,AM & W,11,12,10,12,12,14,17,0
-Martim Duarte,Arouca,GK,0,0,0,0,0,0,0,14
-Tomé Sousa,Santa Clara,GK,0,0,0,0,0,0,0,8
-Bernardo Fontes,SC Braga,GK,0,0,0,0,0,0,0,11
-Mt,Santa Clara,FB & WB,11,13,13,13,11,9,13,0
-N. Pérez,Porto,CB,14,15,14,15,13,7,11,0
-Ulisses,Nacional,CB,15,8,12,11,10,13,10,0
-Nilton Varela,Marítimo,FB & WB,6,11,6,5,5,12,10,0
-Fabrício Garcia,Estoril,FB & WB,12,4,13,15,8,3,12,0
-Pedro Santos,Arouca,MF,5,4,8,12,15,7,6,0
-Xeka,Estoril,MF,12,13,11,8,9,10,7,0
-Óscar Aranda,Famalicão,AM & W,11,6,9,11,10,5,11,0
-Dudu Teodora,Nacional,AM & W,12,8,8,7,1,8,10,0
-Henrique Araújo,Casa Pia AC,CF,13,10,11,10,7,9,10,0
-I. Zlobin,Famalicão,GK,0,0,0,0,0,0,0,14
-Lucas França,Santa Clara,GK,0,0,0,0,0,0,0,9
-O. Lebedenko,Arouca,FB & WB,17,13,15,13,11,9,12,0
-Igor Milioransa,Académico de Viseu F.C.,FB & WB,7,6,9,10,8,9,11,0
-João Veloso,Moreirense,MF,14,15,12,8,10,5,5,0
-Vivaldo Semedo,Alverca,CF,17,12,11,7,3,11,6,0
-Gonçalo Tabuaço,Marítimo,GK,0,0,0,0,0,0,0,9
-M. Dominguez,Marítimo,AM & W,9,10,6,4,15,15,7,0
-Jhonatan,Alverca,GK,0,0,0,0,0,0,0,15
-Pedro Pacheco,Santa Clara,CB,17,13,15,13,14,10,16,0
-Matchoi Djaló,Nacional,MF,14,7,16,17,3,6,12,0
-Rochinha,Casa Pia AC,AM & W,13,6,11,9,7,9,11,0
-Paulinho,Académico de Viseu F.C.,CF,10,9,8,4,8,7,7,0
-Jo�o Gon�alves,Nacional,GK,0,0,0,0,0,0,0,6
-Ivanildo Fernandes,Nacional,CB,8,11,7,2,7,8,6,0
-Joel Silva,Nacional,MF,13,10,14,14,3,10,12,0
-Rafael Fernandes,Marítimo,CB,19,6,14,13,19,15,15,0
-S. El Karouani,Benfica,FB & WB,13,16,16,17,13,6,11,0
-Hwang In-Beom,Porto,MF,9,16,13,15,14,9,12,0
-B. Limbombe,Marítimo,AM & W,3,11,9,13,5,5,6,0
-T. Borevković,Vitória SC,CB,13,7,9,6,13,12,9,0
-S. Andreou,Estoril,CB,4,5,6,10,8,8,7,0
-O. Zych,Vitória SC,GK,0,0,0,0,0,0,0,11
-Bojang Yaya,Alverca,CB,4,15,8,8,8,10,4,0
-Diogo Nascimento,Rio Ave,MF,14,14,17,19,15,11,16,0
-N. Irankunda,Sporting CP,CF,6,14,14,19,16,14,18,0
-I. Doumbia,Sporting CP,MF,19,12,16,13,9,6,12,0
-H. Gambor,Académico de Viseu F.C.,CB,2,6,4,7,12,8,8,0
-Lucas Mincarelli,Estrela Amadora,FB & WB,5,4,8,14,12,13,14,0
-Milan Robin,Estoril,MF,10,11,12,13,8,14,13,0
-A. Camblan,Estoril,AM & W,6,11,12,16,9,8,10,0
-M. Sellouki,Rio Ave,AM & W,12,8,11,9,15,7,10,0
-N. Raveyre,Alverca,GK,0,0,0,0,0,0,0,8
-G. Szalai,Marítimo,CB,15,10,13,9,13,9,9,0
-T. Szűcs,Famalicão,MF,12,11,16,18,11,11,18,0
-S. Leković,Estrela Amadora,CB,16,12,14,12,13,11,16,0
-J. Milošević,SC Braga,CF,18,18,14,10,13,10,11,0
-Xavi Sintes,Estoril,CB,8,7,6,3,12,14,9,0
-Sergio Barcia,SC Braga,CB,12,12,12,13,13,12,13,0
-Toni Tamarit,Alverca,FB & WB,8,12,11,14,9,6,10,0
-Mario Climent,Arouca,FB & WB,6,12,11,14,9,9,10,0
-Fernando Medrano,Estoril,FB & WB,13,13,12,12,13,13,13,0
-Valery Fernández,Académico de Viseu F.C.,AM & W,1,2,1,2,4,10,6,0
-D. Sankhare,Alverca,CF,6,4,6,8,2,10,11,0
-Juan Soriano,Académico de Viseu F.C.,GK,0,0,0,0,0,0,0,12
-A. Bajrami,SC Braga,CB,11,11,13,15,12,9,11,0
-L. Zvonarek,Estrela Amadora,MF,12,9,13,13,8,5,11,0
-G. Koutsias,Famalicão,CF,6,5,7,11,9,8,12,0
-R. Jurišić,Estoril,FB & WB,11,7,13,15,16,16,19,0
-N. Omerović,Estoril,AM & W,14,8,16,17,14,10,11,0
-A. Jakupović,Vitória SC,CF,3,6,5,4,13,16,9,0
-D. Dongmo,Nacional,MF,3,8,9,14,14,11,13,0
-R. Galčík,Rio Ave,AM & W,16,13,14,12,10,4,9,0
-R. Siler,Rio Ave,CF,17,9,11,6,4,7,7,0
-S. Andersen,Sporting CP,CB,16,11,17,16,18,11,10,0
-S. Clemmensen,Rio Ave,AM & W,15,7,13,15,9,10,11,0
-Tamble Monteiro,Rio Ave,CF,17,10,13,9,8,11,11,0
-Souza,Porto,FB & WB,14,11,15,16,4,16,15,0
-Zé Rafael,Alverca,MF,13,7,13,12,8,9,14,0
-Ryan Guilherme,Rio Ave,MF,10,12,12,14,15,13,16,0
-Gabriel Mec,Porto,AM & W,12,3,9,9,3,8,10,0
-Ismael Sierra,Estoril,CB,12,6,9,10,11,12,13,0
-Miguel Baeza,Nacional,AM & W,1,10,3,5,7,9,10,0
-N. John,Moreirense,MF,17,7,15,13,7,5,12,0
-Jos� Melro,Marítimo,CF,17,15,12,7,3,6,7,0
-Pedro Santos,Famalicão,MF,5,4,8,12,15,7,6,0
-Garcia,Famalicão,FB & WB,4,13,10,15,14,11,13,0
-David Grilo,Estrela Amadora,GK,0,0,0,0,0,0,0,14
-Diogo Pinto,Estrela Amadora,GK,0,0,0,0,0,0,0,13
-L. Ofori,Casa Pia AC,MF,7,10,7,10,13,4,9,0
-Pedro Rosas,Casa Pia AC,FB & WB,19,7,15,13,11,11,10,0
-Antonio Espigares,Gil Vicente,CB,14,10,10,5,11,5,8,0
-M. Elimbi,Gil Vicente,CB,8,9,10,13,7,5,8,0
-Jonathan Buatu,Gil Vicente,CB,10,13,7,5,6,8,10,0
-Zé Carlos,Gil Vicente,MF,3,6,4,5,14,10,5,0
-Joelson Fernandes,Gil Vicente,AM & W,5,13,9,11,4,7,5,0
-A. Moreira,Gil Vicente,AM & W,11,8,14,16,5,9,12,0
-Murilo,Gil Vicente,AM & W,14,12,13,14,13,7,13,0
-Santi García,Gil Vicente,CF,5,14,11,15,17,12,12,0
-David Moreira,Gil Vicente,FB & WB,4,3,3,3,16,11,8,0
-Diogo Prioste,Gil Vicente,MF,11,17,11,10,16,11,12,0
-M. Kaba,Gil Vicente,CF,17,18,17,14,11,16,13,0
-Weverson,Gil Vicente,FB & WB,7,13,9,9,7,13,13,0
-M. Bamba,Gil Vicente,MF,14,4,9,7,9,8,9,0
-T. Touré,Gil Vicente,AM & W,8,8,10,13,5,12,15,0
-Héctor Hernández,Gil Vicente,CF,8,6,4,2,10,8,6,0
-Ricardo Esgaio,Gil Vicente,FB & WB,5,6,4,5,10,11,6,0
-Samuel Portugal,Gil Vicente,GK,0,0,0,0,0,0,0,10
-Henrique Poniewas,Estrela Amadora,CF,8,11,5,4,10,12,8,0
-Tiago Pinto,Estrela Amadora,MF,14,14,16,16,14,7,12,0
-L�o Linck,Estrela Amadora,GK,0,0,0,0,0,0,0,13
-N�lio Batista,Marítimo,MF,15,14,15,16,10,9,12,0
-Leandro Santos,Moreirense,FB & WB,18,18,16,15,11,3,12,0
-Z� Carlos,Rio Ave,FB & WB,4,6,6,9,8,10,9,0
-Diego Rodrigues,SC Braga,MF,13,8,13,16,10,11,18,0
-E. Tiknaz,SC Braga,MF,15,9,10,8,13,17,13,0
-Jo�o Carvalho,SC Braga,GK,0,0,0,0,0,0,0,13
-Miguel Nogueira,Vitória SC,AM & W,19,9,14,12,9,10,12,0
-Francisco Dias,Vitória SC,FB & WB,7,11,11,14,13,12,14,0
-Wesley Gasolina,Nacional,FB & WB,10,10,10,10,10,10,10,0
+"Season","League","Player","Team","Age","Position","Goal.Scoring","Assist.Creation","Attack","Dribbling","Possession","Defense","Physical","Goalkeeping"
+"2026/27","Liga Portugal","S. Baseya","Alverca",21,"CB",11,11,14,19,11,6,16,0
+"2026/27","Liga Portugal","Silvi Clúa","Casa Pia AC",21,"CB",18,7,13,11,6,12,11,0
+"2026/27","Liga Portugal","Kevyn Monteiro","Moreirense",21,"CB",8,7,8,7,4,11,10,0
+"2026/27","Liga Portugal","Gilberto Batista","Moreirense",22,"CB",4,9,7,9,9,13,8,0
+"2026/27","Liga Portugal","Bojang Yaya","Alverca",22,"CB",6,7,7,9,8,7,9,0
+"2026/27","Liga Portugal","S. Leković","Estrela Amadora",22,"CB",11,10,11,8,11,7,12,0
+"2026/27","Liga Portugal","Gustavo Mancha","Rio Ave",22,"CB",4,7,7,11,10,10,12,0
+"2026/27","Liga Portugal","I. James","Alverca",22,"CB",6,15,12,15,5,6,11,0
+"2026/27","Liga Portugal","Chico Gonçalves","Nacional",22,"CB",8,14,9,9,6,4,6,0
+"2026/27","Liga Portugal","Kaly","Casa Pia AC",22,"CB",8,7,8,8,4,17,9,0
+"2026/27","Liga Portugal","Thiago Balieiro","Vitória SC",23,"CB",11,7,8,5,7,6,5,0
+"2026/27","Liga Portugal","M. Elimbi","Gil Vicente",23,"CB",7,7,8,10,10,6,10,0
+"2026/27","Liga Portugal","Z. Debast","Sporting CP",23,"CB",7,13,11,16,19,5,14,0
+"2026/27","Liga Portugal","Ismael Sierra","Estoril",23,"CB",12,13,12,10,9,12,7,0
+"2026/27","Liga Portugal","F. Van Breemen","Famalicão",23,"CB",15,7,11,11,13,10,10,0
+"2026/27","Liga Portugal","Emanuel Fernandes","Santa Clara",23,"CB",8,12,9,11,6,9,11,0
+"2026/27","Liga Portugal","Víctor Rofino","Famalicão",24,"CB",12,7,7,5,14,7,4,0
+"2026/27","Liga Portugal","Rafael Fernandes","Marítimo",24,"CB",10,9,9,6,4,8,7,0
+"2026/27","Liga Portugal","A. Bajrami","SC Braga",24,"CB",8,10,7,7,7,11,5,0
+"2026/27","Liga Portugal","Eduardo Quaresma","Sporting CP",24,"CB",7,10,9,12,11,13,8,0
+"2026/27","Liga Portugal","Tomás Araújo","Benfica",24,"CB",11,11,12,14,18,6,13,0
+"2026/27","Liga Portugal","Luan Patrick","Estrela Amadora",24,"CB",9,7,11,15,15,13,12,0
+"2026/27","Liga Portugal","F. Petrasso","Rio Ave",24,"CB",14,7,8,5,6,8,6,0
+"2026/27","Liga Portugal","Ahmed Sidibé","Vitória SC",24,"CB",10,7,12,16,14,10,17,0
+"2026/27","Liga Portugal","Matheus Dias","Nacional",24,"CB",8,7,8,9,6,13,8,0
+"2026/27","Liga Portugal","David Sousa","Casa Pia AC",25,"CB",12,10,14,13,10,17,16,0
+"2026/27","Liga Portugal","N. Michelis","Académico de Viseu F.C.",25,"CB",7,7,7,8,14,14,10,0
+"2026/27","Liga Portugal","Zé Vitor","Nacional",25,"CB",16,7,15,17,11,13,15,0
+"2026/27","Liga Portugal","Sergio Barcia","SC Braga",25,"CB",5,15,10,12,7,4,8,0
+"2026/27","Liga Portugal","L. Realpe","Famalicão",25,"CB",7,7,6,6,9,6,4,0
+"2026/27","Liga Portugal","Xavi Sintes","Estoril",25,"CB",10,12,13,12,4,12,10,0
+"2026/27","Liga Portugal","Gonçalo Inácio","Sporting CP",25,"CB",16,13,16,15,16,11,14,0
+"2026/27","Liga Portugal","A. Barišić","SC Braga",25,"CB",13,18,12,8,13,11,11,0
+"2026/27","Liga Portugal","G. Lagerbielke","SC Braga",26,"CB",13,11,11,5,12,11,11,0
+"2026/27","Liga Portugal","José Fontán","Arouca",26,"CB",13,7,9,8,14,15,9,0
+"2026/27","Liga Portugal","J. Kiwior","Porto",26,"CB",14,15,14,12,15,8,14,0
+"2026/27","Liga Portugal","Óscar Rivas","Vitória SC",26,"CB",10,7,10,10,15,9,8,0
+"2026/27","Liga Portugal","João Goulart","Casa Pia AC",26,"CB",4,7,5,6,9,8,8,0
+"2026/27","Liga Portugal","G. Szalai","Marítimo",26,"CB",16,10,9,3,3,12,9,0
+"2026/27","Liga Portugal","Léo Santos","Nacional",27,"CB",19,16,18,17,12,15,15,0
+"2026/27","Liga Portugal","A. Correia","Académico de Viseu F.C.",27,"CB",6,16,8,9,13,9,7,0
+"2026/27","Liga Portugal","Romain Correia","Marítimo",27,"CB",13,7,10,10,8,13,11,0
+"2026/27","Liga Portugal","Ferro","Estoril",29,"CB",7,7,8,10,13,13,11,0
+"2026/27","Liga Portugal","T. Borevković","Vitória SC",29,"CB",18,7,16,17,8,9,14,0
+"2026/27","Liga Portugal","Javi Sánchez","Arouca",29,"CB",6,15,7,7,16,12,9,0
+"2026/27","Liga Portugal","Pedro Pacheco","Santa Clara",29,"CB",8,12,10,12,7,8,10,0
+"2026/27","Liga Portugal","Vitor Carvalho","SC Braga",29,"CB",10,14,11,9,12,13,13,0
+"2026/27","Liga Portugal","J. Bednarek","Porto",30,"CB",17,13,15,13,18,13,14,0
+"2026/27","Liga Portugal","C. Lenglet","Benfica",31,"CB",16,13,16,17,16,9,14,0
+"2026/27","Liga Portugal","Maracás","Moreirense",32,"CB",7,7,5,3,4,13,8,0
+"2026/27","Liga Portugal","Jonathan Buatu","Gil Vicente",33,"CB",6,7,6,8,8,12,11,0
+"2026/27","Liga Portugal","S. Pérez","Casa Pia AC",33,"CB",8,15,11,11,9,14,7,0
+"2026/27","Liga Portugal","Sergi Gómez","Alverca",34,"CB",7,10,7,6,10,8,5,0
+"2026/27","Liga Portugal","Martim Fernandes","Porto",20,"FB & WB",15,8,9,5,4,6,4,0
+"2026/27","Liga Portugal","Pedro Bondo","Famalicão",21,"FB & WB",6,5,7,10,9,10,9,0
+"2026/27","Liga Portugal","Francisco Chissumba","Alverca",21,"FB & WB",16,10,9,4,6,7,5,0
+"2026/27","Liga Portugal","M. Jensen","Nacional",21,"FB & WB",9,9,10,11,9,7,9,0
+"2026/27","Liga Portugal","Gu Costa","Académico de Viseu F.C.",21,"FB & WB",4,5,2,2,15,11,10,0
+"2026/27","Liga Portugal","M. Scholze","Estrela Amadora",21,"FB & WB",16,11,14,14,7,9,12,0
+"2026/27","Liga Portugal","Tony Strata","Vitória SC",22,"FB & WB",9,13,13,16,14,15,13,0
+"2026/27","Liga Portugal","David Moreira","Gil Vicente",22,"FB & WB",10,6,10,11,7,10,13,0
+"2026/27","Liga Portugal","Iván Fresneda","Sporting CP",22,"FB & WB",12,17,14,14,14,14,14,0
+"2026/27","Liga Portugal","Diogo Travassos","SC Braga",22,"FB & WB",12,7,14,16,7,5,10,0
+"2026/27","Liga Portugal","Diogo Spencer","Alverca",22,"FB & WB",9,16,13,15,16,12,13,0
+"2026/27","Liga Portugal","A. Costa","Porto",23,"FB & WB",13,15,15,14,12,12,12,0
+"2026/27","Liga Portugal","Gabri Martínez","SC Braga",23,"FB & WB",19,11,19,18,13,7,12,0
+"2026/27","Liga Portugal","S. Dahl","Benfica",23,"FB & WB",16,8,11,9,13,13,13,0
+"2026/27","Liga Portugal","Pedro Carvalho","Estoril",23,"FB & WB",9,16,12,12,7,10,6,0
+"2026/27","Liga Portugal","João Tomé","Rio Ave",23,"FB & WB",5,12,7,9,12,12,9,0
+"2026/27","Liga Portugal","Nelson Abbey","Rio Ave",23,"FB & WB",5,7,5,7,2,11,10,0
+"2026/27","Liga Portugal","Miguel Brau","Académico de Viseu F.C.",24,"FB & WB",4,7,8,14,6,10,12,0
+"2026/27","Liga Portugal","Kiko","Moreirense",24,"FB & WB",11,9,8,7,12,17,13,0
+"2026/27","Liga Portugal","Rodrigo Pinheiro","Famalicão",24,"FB & WB",7,9,9,10,13,11,13,0
+"2026/27","Liga Portugal","Gabriel Silva","SC Braga",24,"FB & WB",14,15,16,16,9,4,11,0
+"2026/27","Liga Portugal","Pedro Rosas","Casa Pia AC",25,"FB & WB",8,13,8,6,3,10,5,0
+"2026/27","Liga Portugal","Nabil Touaizi","Alverca",25,"FB & WB",11,8,12,13,10,10,10,0
+"2026/27","Liga Portugal","R. Jurišić","Estoril",25,"FB & WB",7,9,11,14,8,5,14,0
+"2026/27","Liga Portugal","G. Liavas","Rio Ave",25,"FB & WB",9,6,5,2,14,12,6,0
+"2026/27","Liga Portugal","Ricard Sánchez","Estoril",26,"FB & WB",14,7,11,13,9,14,13,0
+"2026/27","Liga Portugal","W. Kokolo","Nacional",26,"FB & WB",8,12,10,11,11,5,9,0
+"2026/27","Liga Portugal","M. Araújo","Sporting CP",26,"FB & WB",18,15,16,14,10,11,13,0
+"2026/27","Liga Portugal","Wesley Gasolina","Nacional",26,"FB & WB",14,10,11,9,9,9,9,0
+"2026/27","Liga Portugal","João Mendes","Vitória SC",26,"FB & WB",6,9,10,13,17,13,10,0
+"2026/27","Liga Portugal","Dinis Pinto","Moreirense",26,"FB & WB",17,9,12,8,3,12,9,0
+"2026/27","Liga Portugal","Víctor Gómez","SC Braga",26,"FB & WB",12,11,12,10,15,8,13,0
+"2026/27","Liga Portugal","Fernando Medrano","Estoril",26,"FB & WB",8,9,5,4,14,8,10,0
+"2026/27","Liga Portugal","Lucas Soares","Santa Clara",28,"FB & WB",8,10,6,5,13,7,8,0
+"2026/27","Liga Portugal","A. Bah","Benfica",28,"FB & WB",18,14,15,13,15,10,14,0
+"2026/27","Liga Portugal","O. Lebedenko","Arouca",28,"FB & WB",9,10,10,9,8,12,9,0
+"2026/27","Liga Portugal","M. Vrousai","Rio Ave",28,"FB & WB",11,5,7,4,10,14,7,0
+"2026/27","Liga Portugal","Calila","Santa Clara",28,"FB & WB",6,11,6,6,8,8,10,0
+"2026/27","Liga Portugal","Guilherme Romão","Santa Clara",29,"FB & WB",7,9,7,6,7,12,10,0
+"2026/27","Liga Portugal","Robinho","Académico de Viseu F.C.",29,"FB & WB",5,12,9,13,12,14,10,0
+"2026/27","Liga Portugal","Zaidu","Porto",29,"FB & WB",8,8,8,8,9,6,10,0
+"2026/27","Liga Portugal","Paulo Henrique","Marítimo",30,"FB & WB",16,7,12,9,9,12,10,0
+"2026/27","Liga Portugal","Tiago Esgaio","Arouca",31,"FB & WB",10,11,12,12,15,10,11,0
+"2026/27","Liga Portugal","Rafa Soares","Estrela Amadora",31,"FB & WB",9,19,11,10,13,10,9,0
+"2026/27","Liga Portugal","Igor Julião","Marítimo",32,"FB & WB",6,11,9,11,10,10,12,0
+"2026/27","Liga Portugal","Ricardo Esgaio","Gil Vicente",33,"FB & WB",8,10,11,13,15,9,7,0
+"2026/27","Liga Portugal","André Geraldes","Casa Pia AC",35,"FB & WB",6,8,7,9,7,12,11,0
+"2026/27","Liga Portugal","Santiago Serra","Estrela Amadora",19,"MF",12,9,13,13,15,13,15,0
+"2026/27","Liga Portugal","V. Froholdt","Porto",20,"MF",19,13,17,16,7,4,9,0
+"2026/27","Liga Portugal","Davy Gui","Alverca",20,"MF",10,10,10,9,7,12,10,0
+"2026/27","Liga Portugal","E. Doué","Estrela Amadora",20,"MF",7,17,10,12,12,12,9,0
+"2026/27","Liga Portugal","João Rêgo","Casa Pia AC",21,"MF",15,12,16,19,6,12,15,0
+"2026/27","Liga Portugal","M. De Amorim","Famalicão",21,"MF",9,11,10,9,12,6,6,0
+"2026/27","Liga Portugal","T. Szűcs","Famalicão",21,"MF",6,7,7,9,6,7,5,0
+"2026/27","Liga Portugal","Rayan Lucas","Alverca",21,"MF",11,14,9,5,8,10,6,0
+"2026/27","Liga Portugal","Alejandro Mestanza","Académico de Viseu F.C.",21,"MF",11,15,12,9,9,12,10,0
+"2026/27","Liga Portugal","Marcos Peña","Famalicão",21,"MF",4,13,6,10,15,8,11,0
+"2026/27","Liga Portugal","Silas Andersen","Sporting CP",22,"MF",12,8,12,11,17,9,12,0
+"2026/27","Liga Portugal","E. Tıknaz","SC Braga",22,"MF",9,14,13,16,18,13,15,0
+"2026/27","Liga Portugal","Gonçalo Nogueira","Vitória SC",22,"MF",13,11,13,16,12,10,15,0
+"2026/27","Liga Portugal","M. Stjepanović","Moreirense",22,"MF",6,10,8,8,9,13,7,0
+"2026/27","Liga Portugal","T. Fukui","Arouca",22,"MF",12,10,13,15,9,7,10,0
+"2026/27","Liga Portugal","Diogo Prioste","Gil Vicente",22,"MF",7,12,12,17,15,5,12,0
+"2026/27","Liga Portugal","Nile John","Moreirense",23,"MF",11,9,11,15,4,9,12,0
+"2026/27","Liga Portugal","A. Ntoi","Rio Ave",23,"MF",7,6,5,5,11,13,10,0
+"2026/27","Liga Portugal","A. Tsoungui","Estoril",23,"MF",7,7,5,3,10,13,4,0
+"2026/27","Liga Portugal","I. Doumbia","Sporting CP",23,"MF",12,15,14,14,14,11,13,0
+"2026/27","Liga Portugal","Ian Luccas","Alverca",23,"MF",18,5,10,5,6,9,9,0
+"2026/27","Liga Portugal","E. Van Ee","Arouca",23,"MF",12,5,6,4,11,9,8,0
+"2026/27","Liga Portugal","Dani Borges","Santa Clara",23,"MF",9,5,8,8,6,16,13,0
+"2026/27","Liga Portugal","J. Gorby","SC Braga",24,"MF",10,9,10,12,11,9,12,0
+"2026/27","Liga Portugal","Lohann Doucet","Vitória SC",24,"MF",5,7,7,11,13,9,8,0
+"2026/27","Liga Portugal","Rodrigo Andrade","Marítimo",24,"MF",8,7,8,7,8,9,6,0
+"2026/27","Liga Portugal","A. Lausen","Gil Vicente",24,"MF",11,10,12,11,10,5,6,0
+"2026/27","Liga Portugal","Gabri Veiga","Porto",24,"MF",19,17,18,17,13,10,15,0
+"2026/27","Liga Portugal","Beni","Vitória SC",24,"MF",4,7,5,6,14,12,8,0
+"2026/27","Liga Portugal","Diogo Nascimento","Rio Ave",24,"MF",5,8,6,8,12,4,7,0
+"2026/27","Liga Portugal","Sergi Altimira","Sporting CP",25,"MF",10,6,8,10,14,13,16,0
+"2026/27","Liga Portugal","S. Messeguem","Académico de Viseu F.C.",25,"MF",15,11,15,16,5,9,12,0
+"2026/27","Liga Portugal","Guilherme Liberato","Moreirense",25,"MF",8,7,7,6,6,13,9,0
+"2026/27","Liga Portugal","C. Labidi","Nacional",25,"MF",12,11,11,9,6,12,14,0
+"2026/27","Liga Portugal","Zé Carlos","Gil Vicente",25,"MF",5,9,7,7,11,10,6,0
+"2026/27","Liga Portugal","Leandro Barreiro","Benfica",26,"MF",19,12,14,7,3,12,10,0
+"2026/27","Liga Portugal","Pedro Santos","Arouca",26,"MF",5,18,13,19,16,13,14,0
+"2026/27","Liga Portugal","Paulo Moreira","Famalicão",26,"MF",17,5,11,8,2,5,5,0
+"2026/27","Liga Portugal","T. Nikitscher","Rio Ave",27,"MF",7,11,8,8,3,11,11,0
+"2026/27","Liga Portugal","T. Van De Looi","Famalicão",27,"MF",7,8,6,3,5,11,10,0
+"2026/27","Liga Portugal","J. Holsgrove","Estoril",27,"MF",9,14,13,14,13,15,15,0
+"2026/27","Liga Portugal","V. Danilović","Marítimo",27,"MF",10,6,9,9,14,5,10,0
+"2026/27","Liga Portugal","Pedro Ferreira","Santa Clara",28,"MF",8,7,9,10,7,16,14,0
+"2026/27","Liga Portugal","Liziero","Nacional",28,"MF",8,14,9,10,14,8,14,0
+"2026/27","Liga Portugal","C. Kahraman","Académico de Viseu F.C.",28,"MF",10,17,14,17,10,3,10,0
+"2026/27","Liga Portugal","L. Ofori","Casa Pia AC",28,"MF",12,10,10,8,12,7,6,0
+"2026/27","Liga Portugal","P. Rosario","Porto",29,"MF",10,13,12,12,12,16,14,0
+"2026/27","Liga Portugal","Hwang In-Beom","Porto",30,"MF",17,15,14,9,11,9,4,0
+"2026/27","Liga Portugal","F. Aursnes","Benfica",30,"MF",17,7,9,3,11,11,6,0
+"2026/27","Liga Portugal","João Palhinha","Benfica",31,"MF",11,7,9,7,12,17,14,0
+"2026/27","Liga Portugal","Luís Silva","Académico de Viseu F.C.",34,"MF",8,5,7,8,7,10,5,0
+"2026/27","Liga Portugal","João Moutinho","SC Braga",40,"MF",5,13,8,10,13,12,13,0
+"2026/27","Liga Portugal","Landerson","Moreirense",19,"AM & W",9,5,6,8,4,10,8,0
+"2026/27","Liga Portugal","Oumar Camara","Vitória SC",19,"AM & W",14,6,14,15,7,12,13,0
+"2026/27","Liga Portugal","Miguel Patricio","Rio Ave",19,"AM & W",9,5,9,13,13,7,13,0
+"2026/27","Liga Portugal","Flávio Gonçalves","Sporting CP",19,"AM & W",18,11,12,8,16,12,10,0
+"2026/27","Liga Portugal","William Gomes","Porto",20,"AM & W",16,14,15,12,13,11,9,0
+"2026/27","Liga Portugal","N. Irankunda","Sporting CP",20,"AM & W",9,14,15,18,18,12,18,0
+"2026/27","Liga Portugal","G. Prestianni","Benfica",20,"AM & W",19,19,19,18,15,14,17,0
+"2026/27","Liga Portugal","Gil Martins","Gil Vicente",20,"AM & W",11,10,10,9,12,9,10,0
+"2026/27","Liga Portugal","Luis Guilherme","Sporting CP",20,"AM & W",9,13,15,17,15,9,16,0
+"2026/27","Liga Portugal","Sorriso","Santa Clara",20,"AM & W",9,12,10,10,10,6,6,0
+"2026/27","Liga Portugal","Miguel Nogueira","Vitória SC",21,"AM & W",8,11,8,7,6,7,7,0
+"2026/27","Liga Portugal","Tiago Andrade","Moreirense",21,"AM & W",14,15,13,12,9,12,12,0
+"2026/27","Liga Portugal","M. Bebiano Mendonça","Moreirense",21,"AM & W",13,13,11,9,8,8,7,0
+"2026/27","Liga Portugal","L. Zvonarek","Estrela Amadora",21,"AM & W",12,7,7,4,6,10,9,0
+"2026/27","Liga Portugal","R. Beney","Famalicão",21,"AM & W",7,5,9,14,6,10,12,0
+"2026/27","Liga Portugal","Martín Tejón","Marítimo",22,"AM & W",11,9,12,13,7,12,12,0
+"2026/27","Liga Portugal","Mateo Flores","Arouca",22,"AM & W",3,5,4,6,6,12,10,0
+"2026/27","Liga Portugal","Lorougnon Gohi","Académico de Viseu F.C.",22,"AM & W",11,10,12,14,15,10,11,0
+"2026/27","Liga Portugal","B. Pauwels","Casa Pia AC",22,"AM & W",10,6,7,8,4,5,7,0
+"2026/27","Liga Portugal","Mohamed Salah","Casa Pia AC",22,"AM & W",5,9,6,8,10,13,11,0
+"2026/27","Liga Portugal","A. Schjelderup","Benfica",22,"AM & W",15,18,18,18,19,11,17,0
+"2026/27","Liga Portugal","Mario Dorgeles","SC Braga",22,"AM & W",5,11,7,4,13,19,11,0
+"2026/27","Liga Portugal","Rodri Alonso","Moreirense",23,"AM & W",2,5,2,3,12,5,4,0
+"2026/27","Liga Portugal","S. Clemmensen","Rio Ave",23,"AM & W",14,10,9,4,10,12,8,0
+"2026/27","Liga Portugal","José Tavares","Santa Clara",23,"AM & W",7,9,6,6,8,13,10,0
+"2026/27","Liga Portugal","Joelson Fernandes","Gil Vicente",23,"AM & W",5,6,9,13,10,11,9,0
+"2026/27","Liga Portugal","Pedro Santos","Famalicão",23,"AM & W",10,9,7,8,10,5,4,0
+"2026/27","Liga Portugal","Matchoi Djaló","Nacional",23,"AM & W",18,10,14,10,12,12,12,0
+"2026/27","Liga Portugal","I. Stoica","Estrela Amadora",23,"AM & W",16,10,15,17,7,10,14,0
+"2026/27","Liga Portugal","Óscar Aranda","Famalicão",24,"AM & W",11,10,7,5,7,10,9,0
+"2026/27","Liga Portugal","Brenner","Santa Clara",24,"AM & W",13,5,10,11,4,11,12,0
+"2026/27","Liga Portugal","Tiago Ribeiro","Santa Clara",24,"AM & W",9,10,7,6,6,6,8,0
+"2026/27","Liga Portugal","S. Gavriel","Nacional",24,"AM & W",5,6,8,13,3,10,11,0
+"2026/27","Liga Portugal","Daniel Júnior","Nacional",24,"AM & W",2,13,5,7,13,7,11,0
+"2026/27","Liga Portugal","G. Sudakov","Benfica",24,"AM & W",14,11,11,6,12,7,8,0
+"2026/27","Liga Portugal","Diogo Bezerra","Rio Ave",24,"AM & W",8,13,11,14,10,7,8,0
+"2026/27","Liga Portugal","Á. Zamora","Académico de Viseu F.C.",24,"AM & W",4,8,4,3,7,7,8,0
+"2026/27","Liga Portugal","Santi García","Gil Vicente",25,"AM & W",6,9,7,4,12,10,5,0
+"2026/27","Liga Portugal","Geny Catamo","Sporting CP",25,"AM & W",14,16,15,17,16,4,10,0
+"2026/27","Liga Portugal","Figueiredo","Alverca",25,"AM & W",12,9,10,10,14,13,11,0
+"2026/27","Liga Portugal","R. Galčík","Rio Ave",25,"AM & W",10,5,6,6,8,7,4,0
+"2026/27","Liga Portugal","Pablo Gozálbez","Arouca",25,"AM & W",6,12,10,11,4,16,15,0
+"2026/27","Liga Portugal","Nils Mortimer","Académico de Viseu F.C.",25,"AM & W",4,5,5,7,12,9,10,0
+"2026/27","Liga Portugal","Borja Sainz","Porto",25,"AM & W",20,13,15,13,5,7,8,0
+"2026/27","Liga Portugal","Sorriso","Famalicão",25,"AM & W",13,11,12,10,11,15,11,0
+"2026/27","Liga Portugal","Chiquinho","Alverca",26,"AM & W",10,17,13,15,2,13,14,0
+"2026/27","Liga Portugal","Miguel Baeza","Nacional",26,"AM & W",11,7,7,5,11,11,11,0
+"2026/27","Liga Portugal","João Guilherme","Académico de Viseu F.C.",26,"AM & W",15,5,10,8,8,10,11,0
+"2026/27","Liga Portugal","Simo Bouzaidi","Marítimo",26,"AM & W",14,5,10,10,10,6,6,0
+"2026/27","Liga Portugal","M. Ayomide","Estrela Amadora",26,"AM & W",14,13,13,13,14,9,13,0
+"2026/27","Liga Portugal","N. Djouahra","Arouca",26,"AM & W",4,15,8,10,14,11,7,0
+"2026/27","Liga Portugal","Gustavo Silva","Vitória SC",27,"AM & W",13,11,13,11,8,16,10,0
+"2026/27","Liga Portugal","Song Min-Kyu","Nacional",27,"AM & W",8,12,11,12,8,10,11,0
+"2026/27","Liga Portugal","Rodrigo Zalazar","Sporting CP",27,"AM & W",17,14,12,7,15,15,11,0
+"2026/27","Liga Portugal","A. Trezza","Arouca",27,"AM & W",6,9,11,16,7,11,13,0
+"2026/27","Liga Portugal","Vinícius Lopes","Santa Clara",27,"AM & W",13,13,12,8,5,13,8,0
+"2026/27","Liga Portugal","R. Guitane","Estoril",27,"AM & W",14,12,15,14,11,9,12,0
+"2026/27","Liga Portugal","Welinton Torrão","Santa Clara",27,"AM & W",6,13,11,14,6,15,15,0
+"2026/27","Liga Portugal","João Carvalho","Estoril",29,"AM & W",7,12,9,7,17,7,7,0
+"2026/27","Liga Portugal","Pepê","Porto",29,"AM & W",7,15,12,13,17,7,10,0
+"2026/27","Liga Portugal","D. Lukébakio","Benfica",29,"AM & W",8,6,12,17,10,11,14,0
+"2026/27","Liga Portugal","Samu Silva","Vitória SC",30,"AM & W",11,10,9,5,11,11,4,0
+"2026/27","Liga Portugal","Gil Dias","Famalicão",30,"AM & W",5,9,10,13,15,14,14,0
+"2026/27","Liga Portugal","Kiko Bondoso","Moreirense",30,"AM & W",2,11,3,1,8,6,5,0
+"2026/27","Liga Portugal","Rochinha","Casa Pia AC",31,"AM & W",7,9,10,11,14,5,9,0
+"2026/27","Liga Portugal","Raphael Guzzo","Marítimo",31,"AM & W",8,7,6,7,14,14,6,0
+"2026/27","Liga Portugal","Murilo","Gil Vicente",32,"AM & W",12,15,14,14,11,4,10,0
+"2026/27","Liga Portugal","Ricardo Horta","SC Braga",32,"AM & W",14,11,12,7,12,13,9,0
+"2026/27","Liga Portugal","Rafa Silva","Benfica",33,"AM & W",14,9,13,12,9,14,16,0
+"2026/27","Liga Portugal","Fernando","Santa Clara",21,"CF",7,7,10,14,13,11,11,0
+"2026/27","Liga Portugal","Vivaldo Semedo","Alverca",21,"CF",13,6,8,7,7,6,5,0
+"2026/27","Liga Portugal","G. Koutsias","Famalicão",22,"CF",11,6,8,8,7,9,11,0
+"2026/27","Liga Portugal","Pablo Ruan","Nacional",23,"CF",7,14,11,13,11,12,13,0
+"2026/27","Liga Portugal","L. Vonić","Moreirense",23,"CF",9,11,11,14,13,13,15,0
+"2026/27","Liga Portugal","A. Njoya","Nacional",23,"CF",10,5,7,8,4,12,7,0
+"2026/27","Liga Portugal","A. Parsemain","Moreirense",23,"CF",5,9,7,11,5,6,10,0
+"2026/27","Liga Portugal","L. Antonetti","Estrela Amadora",23,"CF",14,10,13,12,9,11,11,0
+"2026/27","Liga Portugal","Pau Víctor","SC Braga",24,"CF",15,14,16,15,18,11,11,0
+"2026/27","Liga Portugal","Henrique Araújo","Casa Pia AC",24,"CF",3,13,8,11,8,10,10,0
+"2026/27","Liga Portugal","M. Kaba","Gil Vicente",24,"CF",7,5,9,12,8,10,15,0
+"2026/27","Liga Portugal","D. Sankhare","Alverca",24,"CF",13,10,14,19,4,7,16,0
+"2026/27","Liga Portugal","André Lacximicant","Estoril",25,"CF",7,8,12,16,15,14,16,0
+"2026/27","Liga Portugal","Alioune Ndoye","Vitória SC",25,"CF",11,10,11,9,6,12,10,0
+"2026/27","Liga Portugal","Y. Begraoui","Estoril",25,"CF",12,7,11,10,10,7,11,0
+"2026/27","Liga Portugal","J. Blesa","Rio Ave",25,"CF",6,14,10,15,16,14,16,0
+"2026/27","Liga Portugal","Tamble Monteiro","Rio Ave",25,"CF",5,6,5,7,11,16,13,0
+"2026/27","Liga Portugal","F. Ioannidis","Sporting CP",26,"CF",15,15,13,6,11,7,6,0
+"2026/27","Liga Portugal","Adrián Butzke","Marítimo",27,"CF",4,10,8,8,14,9,6,0
+"2026/27","Liga Portugal","A. Jatta","Casa Pia AC",27,"CF",1,11,4,3,4,9,6,0
+"2026/27","Liga Portugal","V. Pavlidis","Benfica",27,"CF",19,16,16,12,16,14,11,0
+"2026/27","Liga Portugal","Andre Clóvis","Académico de Viseu F.C.",28,"CF",13,10,11,9,11,6,7,0
+"2026/27","Liga Portugal","L. Suárez","Sporting CP",28,"CF",18,11,17,18,13,9,14,0
+"2026/27","Liga Portugal","Iván Barbero","Arouca",28,"CF",13,9,10,8,8,10,13,0
+"2026/27","Liga Portugal","A. Jakupović","Vitória SC",28,"CF",11,10,10,7,17,17,9,0
+"2026/27","Liga Portugal","Fran Navarro","SC Braga",28,"CF",8,12,9,7,8,9,6,0
+"2026/27","Liga Portugal","Héctor Hernández","Gil Vicente",31,"CF",12,10,8,6,6,10,8,0
+"2026/27","Liga Portugal","André Silva","Porto",31,"CF",15,14,11,7,11,8,5,0
+"2026/27","Liga Portugal","Gonçalo Paciência","Santa Clara",32,"CF",14,15,12,9,14,11,8,0
+"2026/27","Liga Portugal","R. Bellucci Marin","Nacional",20,"GK",0,0,0,0,0,0,0,12
+"2026/27","Liga Portugal","Oliwier Zych","Vitória SC",22,"GK",0,0,0,0,0,0,0,7
+"2026/27","Liga Portugal","André Gomes","Casa Pia AC",22,"GK",0,0,0,0,0,0,0,6
+"2026/27","Liga Portugal","I. Mandić","Casa Pia AC",23,"GK",0,0,0,0,0,0,0,12
+"2026/27","Liga Portugal","Bernardo","SC Braga",24,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga Portugal","Samuel Soares","Benfica",24,"GK",0,0,0,0,0,0,0,12
+"2026/27","Liga Portugal","Lucão","Gil Vicente",25,"GK",0,0,0,0,0,0,0,15
+"2026/27","Liga Portugal","Léo Linck","Estrela Amadora",25,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga Portugal","E. Van Der Gouw","Rio Ave",26,"GK",0,0,0,0,0,0,0,11
+"2026/27","Liga Portugal","Alfonso Pastor","Marítimo",26,"GK",0,0,0,0,0,0,0,9
+"2026/27","Liga Portugal","Diogo Costa","Porto",27,"GK",0,0,0,0,0,0,0,15
+"2026/27","Liga Portugal","L. Carević","Famalicão",27,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga Portugal","Fran Vieites","Marítimo",27,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga Portugal","Matheus Mendes","Alverca",27,"GK",0,0,0,0,0,0,0,11
+"2026/27","Liga Portugal","Ewerton","Académico de Viseu F.C.",28,"GK",0,0,0,0,0,0,0,13
+"2026/27","Liga Portugal","I. De Arruabarrena","Arouca",29,"GK",0,0,0,0,0,0,0,16
+"2026/27","Liga Portugal","Lucas França","Santa Clara",30,"GK",0,0,0,0,0,0,0,12
+"2026/27","Liga Portugal","André Ferreira","Moreirense",30,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga Portugal","Rui Silva","Sporting CP",32,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga Portugal","Joel Robles","Estoril",36,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga 2","Ni","Académica",23,"CB",10,9,12,15,6,9,7,0
+"2026/27","Liga 2","Ricardo Teixeira","Académica",25,"CB",12,12,14,13,8,9,13,0
+"2026/27","Liga 2","F. Mendes","Amarante",23,"CB",13,12,11,8,11,13,9,0
+"2026/27","Liga 2","Rodrigo Beirão","Amarante",23,"CB",4,15,10,15,16,8,12,0
+"2026/27","Liga 2","Gonçalo Cunha","Amarante",24,"CB",18,8,12,8,8,10,8,0
+"2026/27","Liga 2","João Filipe","Amarante",26,"CB",11,8,8,4,6,9,6,0
+"2026/27","Liga 2","B. Conde","AVS ",20,"CB",4,8,7,12,13,11,9,0
+"2026/27","Liga 2","Ponck","AVS ",31,"CB",4,8,6,9,14,15,12,0
+"2026/27","Liga 2","L. Rosić","AVS ",33,"CB",8,13,10,10,8,8,9,0
+"2026/27","Liga 2","Gabriel Queiroz","Benfica B",18,"CB",7,12,11,13,12,14,12,0
+"2026/27","Liga 2","João Fonseca","Benfica B",20,"CB",10,11,13,16,12,11,12,0
+"2026/27","Liga 2","M. Tounkara","Chaves",24,"CB",13,9,12,11,9,16,14,0
+"2026/27","Liga 2","Tiago Simões","Chaves",26,"CB",10,16,11,11,12,7,9,0
+"2026/27","Liga 2","N. Araújo","Chaves",35,"CB",13,8,10,7,10,12,8,0
+"2026/27","Liga 2","Ricardo Alves","Chaves",35,"CB",4,10,5,6,14,8,10,0
+"2026/27","Liga 2","Nermin Zolotić","Farense",33,"CB",8,15,10,9,16,10,7,0
+"2026/27","Liga 2","Gonçalo Silva","Farense",35,"CB",19,12,15,12,15,11,10,0
+"2026/27","Liga 2","Antonio Leal","Feirense",27,"CB",9,10,11,11,12,8,14,0
+"2026/27","Liga 2","João Queirós","Feirense",28,"CB",11,14,12,11,10,11,7,0
+"2026/27","Liga 2","Pedro Pinto","Feirense",32,"CB",8,10,10,11,15,9,9,0
+"2026/27","Liga 2","Silvino","Felgueiras 1932",21,"CB",19,8,13,10,6,10,6,0
+"2026/27","Liga 2","B. Ouacharaf","Felgueiras 1932",24,"CB",14,16,16,15,11,10,12,0
+"2026/27","Liga 2","João Pinto","Felgueiras 1932",26,"CB",13,13,12,11,9,12,15,0
+"2026/27","Liga 2","Afonso Freitas","Felgueiras 1932",26,"CB",8,10,8,9,6,11,7,0
+"2026/27","Liga 2","Hugo Faria","Leixões",22,"CB",8,8,9,10,9,7,11,0
+"2026/27","Liga 2","L. Henriques","Leixões",22,"CB",7,11,8,10,10,12,13,0
+"2026/27","Liga 2","Matheus Costa","Leixões",31,"CB",10,8,11,15,9,14,13,0
+"2026/27","Liga 2","Bruno Faria","Lusitania FC Lourosa",22,"CB",15,8,10,7,4,10,5,0
+"2026/27","Liga 2","D. Collard","Lusitania FC Lourosa",26,"CB",18,8,13,9,7,14,14,0
+"2026/27","Liga 2","Adrián Pica","Penafiel",24,"CB",7,10,6,5,6,14,10,0
+"2026/27","Liga 2","Cláudio Silva","Penafiel",26,"CB",7,11,10,13,11,11,12,0
+"2026/27","Liga 2","Jaime Sánchez","Penafiel",31,"CB",7,12,9,13,9,6,9,0
+"2026/27","Liga 2","Marlon Júnior","Portimonense",21,"CB",7,12,9,9,5,8,9,0
+"2026/27","Liga 2","Jarleysom","Portimonense",22,"CB",6,8,8,12,7,13,15,0
+"2026/27","Liga 2","Italo Cabelinho","Portimonense",22,"CB",6,8,6,5,7,7,8,0
+"2026/27","Liga 2","S. Bengui","Portimonense",27,"CB",15,11,13,9,13,11,13,0
+"2026/27","Liga 2","Luís Gomes","Porto B",21,"CB",11,8,12,14,7,12,11,0
+"2026/27","Liga 2","António Ribeiro","Porto B",22,"CB",7,10,8,8,11,7,5,0
+"2026/27","Liga 2","Tiago Ferreira","Porto B",33,"CB",11,12,13,12,12,5,9,0
+"2026/27","Liga 2","Eduardo Felicissimo","Sporting CP B",19,"CB",7,10,8,10,15,9,11,0
+"2026/27","Liga 2","Rafael Mota","Sporting CP B",19,"CB",7,8,7,8,15,15,12,0
+"2026/27","Liga 2","Lucas Taibo","Sporting CP B",20,"CB",8,10,10,13,11,8,12,0
+"2026/27","Liga 2","Kauã Oliveira","Sporting CP B",22,"CB",14,10,10,9,12,14,12,0
+"2026/27","Liga 2","Christian Marques","Tondela",23,"CB",9,8,8,7,8,4,5,0
+"2026/27","Liga 2","B. Medina","Tondela",24,"CB",12,10,9,5,3,8,11,0
+"2026/27","Liga 2","Farru","Tondela",25,"CB",8,16,11,13,10,11,10,0
+"2026/27","Liga 2","Mohamed Diadié","Torreense",22,"CB",6,11,9,10,8,11,11,0
+"2026/27","Liga 2","Volnei","Torreense",26,"CB",10,8,10,10,7,12,9,0
+"2026/27","Liga 2","Stopira","Torreense",38,"CB",11,16,12,9,13,12,10,0
+"2026/27","Liga 2","José Pedro","União de Leiria",24,"CB",14,8,12,13,13,6,12,0
+"2026/27","Liga 2","Marcelo","União de Leiria",37,"CB",15,11,12,9,14,8,10,0
+"2026/27","Liga 2","Andrea Hristov","Vizela",27,"CB",12,8,9,6,11,7,8,0
+"2026/27","Liga 2","Jean-Pierre Rhyner","Vizela",30,"CB",14,8,13,15,14,10,15,0
+"2026/27","Liga 2","Luís Rocha","Vizela",40,"CB",8,8,6,4,10,9,7,0
+"2026/27","Liga 2","Xavi Grande","Académica",21,"FB & WB",6,9,8,9,8,13,6,0
+"2026/27","Liga 2","Káká","Académica",34,"FB & WB",6,11,6,7,7,15,10,0
+"2026/27","Liga 2","Hélder Lopes","Académica",37,"FB & WB",18,10,13,8,4,6,10,0
+"2026/27","Liga 2","Diogo Costa","Amarante",23,"FB & WB",8,6,6,4,7,12,7,0
+"2026/27","Liga 2","João Ricardo","Amarante",25,"FB & WB",9,9,11,12,10,12,13,0
+"2026/27","Liga 2","Luís Machado","Amarante",34,"FB & WB",11,14,14,14,5,7,11,0
+"2026/27","Liga 2","L. Rivas","AVS ",24,"FB & WB",9,5,7,6,7,12,6,0
+"2026/27","Liga 2","Mateus Pivô","AVS ",28,"FB & WB",5,8,5,6,11,9,6,0
+"2026/27","Liga 2","José Neto","Benfica B",18,"FB & WB",8,10,6,6,13,11,8,0
+"2026/27","Liga 2","Duarte Soares","Benfica B",19,"FB & WB",12,9,12,11,13,13,13,0
+"2026/27","Liga 2","João Capucho","Benfica B",19,"FB & WB",12,7,13,15,13,12,13,0
+"2026/27","Liga 2","Kiko Vilas Boas","Chaves",27,"FB & WB",12,8,9,6,11,9,3,0
+"2026/27","Liga 2","Aarón Romero","Chaves",27,"FB & WB",9,7,12,16,10,10,14,0
+"2026/27","Liga 2","Léo Alaba","Chaves",27,"FB & WB",10,9,11,12,9,15,13,0
+"2026/27","Liga 2","Toni Herrero","Farense",25,"FB & WB",13,12,16,18,12,15,17,0
+"2026/27","Liga 2","Alex Pinto","Farense",28,"FB & WB",8,14,12,14,13,15,15,0
+"2026/27","Liga 2","Derick Poloni","Farense",33,"FB & WB",19,11,17,15,10,6,11,0
+"2026/27","Liga 2","Diego Moreno","Feirense",24,"FB & WB",8,7,10,13,10,11,11,0
+"2026/27","Liga 2","André Lopes","Feirense",25,"FB & WB",6,10,9,11,15,13,11,0
+"2026/27","Liga 2","Luiz Gustavo","Feirense",27,"FB & WB",13,8,13,12,10,10,14,0
+"2026/27","Liga 2","Filipe Cruz","Felgueiras 1932",24,"FB & WB",9,13,10,9,7,10,12,0
+"2026/27","Liga 2","Armando Lopes","Felgueiras 1932",27,"FB & WB",9,13,10,11,8,9,8,0
+"2026/27","Liga 2","Serif Nhaga","Leixões",21,"FB & WB",12,13,12,9,12,11,13,0
+"2026/27","Liga 2","Simãozinho","Leixões",31,"FB & WB",10,11,13,14,16,15,10,0
+"2026/27","Liga 2","Paulinho","Leixões",35,"FB & WB",11,8,12,13,9,8,8,0
+"2026/27","Liga 2","Francisco Machado","Lusitania FC Lourosa",21,"FB & WB",10,11,8,4,7,11,7,0
+"2026/27","Liga 2","Ricardinho","Lusitania FC Lourosa",32,"FB & WB",9,11,7,5,9,12,8,0
+"2026/27","Liga 2","Gonçalo Negrão","Penafiel",23,"FB & WB",18,12,13,10,7,6,8,0
+"2026/27","Liga 2","Douglas Borel","Penafiel",24,"FB & WB",14,7,11,10,9,10,12,0
+"2026/27","Liga 2","T. Alloh","Penafiel",24,"FB & WB",6,8,4,3,6,7,5,0
+"2026/27","Liga 2","Simão","Penafiel",27,"FB & WB",7,10,6,6,14,13,12,0
+"2026/27","Liga 2","Edney","Portimonense",22,"FB & WB",16,14,12,7,9,10,7,0
+"2026/27","Liga 2","João Reis","Portimonense",34,"FB & WB",16,13,15,14,14,5,8,0
+"2026/27","Liga 2","Yoan Pereira","Porto B",18,"FB & WB",6,5,5,6,7,12,9,0
+"2026/27","Liga 2","Martim Cunha","Porto B",19,"FB & WB",17,9,12,10,8,15,15,0
+"2026/27","Liga 2","Dinis Rodrigues","Porto B",21,"FB & WB",12,13,10,8,11,8,7,0
+"2026/27","Liga 2","R. Deusdado Rodrigues","Sporting CP B",18,"FB & WB",13,9,15,16,10,10,13,0
+"2026/27","Liga 2","Atanásio Cunha","Sporting CP B",19,"FB & WB",12,5,6,3,7,3,3,0
+"2026/27","Liga 2","Rodrigo Dias","Sporting CP B",21,"FB & WB",7,12,10,14,11,8,9,0
+"2026/27","Liga 2","Zé Ricardo","Tondela",28,"FB & WB",7,11,9,11,14,13,11,0
+"2026/27","Liga 2","Carraça","Tondela",33,"FB & WB",9,15,12,13,12,10,13,0
+"2026/27","Liga 2","Juan Maria Alcedo","Torreense",25,"FB & WB",7,11,14,19,8,7,18,0
+"2026/27","Liga 2","Javi Vázquez","Torreense",26,"FB & WB",12,17,12,12,9,8,9,0
+"2026/27","Liga 2","David Bruno","Torreense",34,"FB & WB",8,6,6,5,17,4,2,0
+"2026/27","Liga 2","M. Masaki","União de Leiria",22,"FB & WB",9,7,9,10,11,8,13,0
+"2026/27","Liga 2","Miguel Maga","União de Leiria",27,"FB & WB",9,14,11,12,15,12,8,0
+"2026/27","Liga 2","Marc Baró","União de Leiria",27,"FB & WB",8,15,13,17,15,7,10,0
+"2026/27","Liga 2","L. Mina Tobar","Vizela",21,"FB & WB",10,6,11,13,8,13,17,0
+"2026/27","Liga 2","Bright Godwin","Vizela",24,"FB & WB",9,12,9,8,12,14,15,0
+"2026/27","Liga 2","Jójó","Vizela",25,"FB & WB",6,8,6,6,9,6,8,0
+"2026/27","Liga 2","J. Sinisterra","Académica",26,"MF",16,10,10,6,5,15,8,0
+"2026/27","Liga 2","Marcos Paulo","Académica",38,"MF",18,14,15,11,9,10,11,0
+"2026/27","Liga 2","Nito","Amarante",24,"MF",12,6,12,16,3,8,13,0
+"2026/27","Liga 2","Faissal Zangré","Amarante",29,"MF",11,13,15,18,4,4,14,0
+"2026/27","Liga 2","Tokinho","Amarante",30,"MF",7,9,9,10,12,11,14,0
+"2026/27","Liga 2","Fernando Almeida","AVS ",24,"MF",8,6,8,8,10,14,11,0
+"2026/27","Liga 2","Roni","AVS ",27,"MF",13,11,9,4,13,12,5,0
+"2026/27","Liga 2","Rafael Quintas","Benfica B",18,"MF",4,6,5,8,15,10,9,0
+"2026/27","Liga 2","Miguel Figueiredo","Benfica B",18,"MF",4,11,7,9,14,9,14,0
+"2026/27","Liga 2","Nuno Félix","Benfica B",22,"MF",9,8,11,14,11,7,9,0
+"2026/27","Liga 2","M. Fofana","Chaves",21,"MF",12,9,12,14,7,9,9,0
+"2026/27","Liga 2","Ktatau","Chaves",25,"MF",17,9,13,10,10,10,13,0
+"2026/27","Liga 2","Gilberto García","Chaves",26,"MF",10,8,8,4,9,15,8,0
+"2026/27","Liga 2","André Rodrigues","Chaves",28,"MF",19,10,18,18,8,7,11,0
+"2026/27","Liga 2","A. Tavares","Chaves",28,"MF",8,6,5,2,7,17,11,0
+"2026/27","Liga 2","Joseph Nduquidi","Farense",22,"MF",13,8,14,16,3,14,17,0
+"2026/27","Liga 2","Sarpreet Singh","Farense",27,"MF",16,16,15,12,15,10,6,0
+"2026/27","Liga 2","Mattheus Oliveira","Farense",32,"MF",18,18,18,17,10,12,14,0
+"2026/27","Liga 2","Cláudio Falcão","Farense",32,"MF",17,9,12,7,11,15,10,0
+"2026/27","Liga 2","Luisinho","Feirense",20,"MF",9,10,13,17,12,7,13,0
+"2026/27","Liga 2","S. Popoola","Feirense",21,"MF",6,14,10,12,14,10,13,0
+"2026/27","Liga 2","Tiago Castro","Feirense",30,"MF",11,12,14,14,7,5,12,0
+"2026/27","Liga 2","Beni Jetour","Felgueiras 1932",21,"MF",6,14,11,15,10,10,10,0
+"2026/27","Liga 2","Francisco França","Felgueiras 1932",24,"MF",8,16,12,15,9,12,9,0
+"2026/27","Liga 2","Henrique Martins","Felgueiras 1932",28,"MF",6,8,7,7,13,9,4,0
+"2026/27","Liga 2","Landinho","Felgueiras 1932",33,"MF",6,9,8,10,11,10,14,0
+"2026/27","Liga 2","Amadu Baldé","Leixões",21,"MF",5,12,6,5,12,13,6,0
+"2026/27","Liga 2","Cláudio Araújo","Leixões",23,"MF",16,14,15,14,15,5,9,0
+"2026/27","Liga 2","R. Barbosa","Leixões",30,"MF",7,17,12,16,10,2,7,0
+"2026/27","Liga 2","Diogo Paulo","Lusitania FC Lourosa",25,"MF",8,8,8,9,13,15,9,0
+"2026/27","Liga 2","Arsénio","Lusitania FC Lourosa",37,"MF",9,16,14,17,13,12,15,0
+"2026/27","Liga 2","Álex Carbonell","Penafiel",29,"MF",6,17,8,7,17,7,8,0
+"2026/27","Liga 2","Pedro Sá","Penafiel",32,"MF",13,9,9,8,10,7,7,0
+"2026/27","Liga 2","João Casimiro","Portimonense",20,"MF",8,11,10,9,5,6,5,0
+"2026/27","Liga 2","Yanis Rocha","Portimonense",22,"MF",17,11,16,15,16,12,15,0
+"2026/27","Liga 2","Xavier","Portimonense",26,"MF",8,9,7,5,7,12,10,0
+"2026/27","Liga 2","Bernardo Lima","Porto B",18,"MF",8,9,8,7,4,13,7,0
+"2026/27","Liga 2","Tiago Silva","Porto B",19,"MF",5,6,7,12,10,11,11,0
+"2026/27","Liga 2","Kauê Rodrigues","Porto B",22,"MF",10,6,8,10,10,16,12,0
+"2026/27","Liga 2","S. Carvalho Justo","Sporting CP B",22,"MF",17,7,16,17,9,10,13,0
+"2026/27","Liga 2","M. Tanlongo","Sporting CP B",23,"MF",9,11,6,7,10,11,9,0
+"2026/27","Liga 2","Mateus Sarará","Tondela",24,"MF",15,7,10,7,11,8,10,0
+"2026/27","Liga 2","Cícero Alves","Tondela",29,"MF",6,6,4,3,11,13,10,0
+"2026/27","Liga 2","Hélder Tavares","Tondela",36,"MF",10,9,9,7,4,14,10,0
+"2026/27","Liga 2","Alejandro Alfaro","Torreense",24,"MF",8,8,10,11,15,11,11,0
+"2026/27","Liga 2","João Marques","Torreense",24,"MF",6,6,7,11,11,9,10,0
+"2026/27","Liga 2","A. Oudrhiri","Torreense",34,"MF",8,7,5,3,13,6,4,0
+"2026/27","Liga 2","A. Lottin","União de Leiria",25,"MF",5,12,11,17,8,8,14,0
+"2026/27","Liga 2","I. Guirassy","União de Leiria",28,"MF",8,10,7,5,14,11,10,0
+"2026/27","Liga 2","E. Kouassi","União de Leiria",28,"MF",8,10,9,9,14,11,10,0
+"2026/27","Liga 2","Miguel Pires","Vizela",24,"MF",14,10,10,6,7,6,7,0
+"2026/27","Liga 2","Giovani Bamba","Vizela",27,"MF",8,10,6,4,10,13,10,0
+"2026/27","Liga 2","Angel Bastunov","Vizela",27,"MF",16,9,12,8,2,4,8,0
+"2026/27","Liga 2","Ângelo Neto","Vizela",35,"MF",13,16,10,7,16,13,13,0
+"2026/27","Liga 2","A. Badara Mane","Académica",23,"AM & W",5,11,11,16,8,10,11,0
+"2026/27","Liga 2","Afonso Rodrigues","Académica",24,"AM & W",10,6,9,8,8,16,11,0
+"2026/27","Liga 2","R. Gomes","Académica",29,"AM & W",14,12,10,6,9,14,10,0
+"2026/27","Liga 2","Kévin Zohi","Académica",29,"AM & W",14,12,10,6,5,12,6,0
+"2026/27","Liga 2","Leandro Silva","Académica",32,"AM & W",7,12,7,7,16,8,10,0
+"2026/27","Liga 2","Bruno Silva","Amarante",21,"AM & W",16,7,13,11,6,12,11,0
+"2026/27","Liga 2","Leandro Ferreira","Amarante",25,"AM & W",14,6,11,10,13,16,11,0
+"2026/27","Liga 2","Hiago Santos","AVS ",22,"AM & W",13,7,11,12,13,12,15,0
+"2026/27","Liga 2","A. Keita","AVS ",24,"AM & W",13,12,13,14,14,9,11,0
+"2026/27","Liga 2","Andrey","AVS ",24,"AM & W",8,12,6,4,16,16,7,0
+"2026/27","Liga 2","G. Neiva","AVS ",25,"AM & W",10,9,9,8,7,13,9,0
+"2026/27","Liga 2","Gonçalo Moreira","Benfica B",20,"AM & W",12,14,10,7,13,3,6,0
+"2026/27","Liga 2","Olívio Tomé","Benfica B",20,"AM & W",19,14,19,17,7,9,17,0
+"2026/27","Liga 2","Tiago Freitas","Benfica B",20,"AM & W",10,13,11,12,13,9,11,0
+"2026/27","Liga 2","Francisco Neto","Benfica B",20,"AM & W",11,8,13,16,10,15,16,0
+"2026/27","Liga 2","Marquinhos","Chaves",23,"AM & W",17,9,13,9,13,15,10,0
+"2026/27","Liga 2","R. Esajas","Chaves",24,"AM & W",7,16,11,12,15,12,15,0
+"2026/27","Liga 2","Costinha","Chaves",25,"AM & W",2,5,9,18,8,13,14,0
+"2026/27","Liga 2","João Resende","Farense",23,"AM & W",12,14,11,7,7,6,7,0
+"2026/27","Liga 2","André Candeias","Farense",23,"AM & W",18,11,15,13,8,10,12,0
+"2026/27","Liga 2","Gui Meira","Feirense",21,"AM & W",8,8,12,14,11,6,11,0
+"2026/27","Liga 2","Isaac","Feirense",22,"AM & W",7,7,10,14,15,10,9,0
+"2026/27","Liga 2","Pedrinho","Feirense",22,"AM & W",15,10,15,15,8,12,11,0
+"2026/27","Liga 2","Piri","Feirense",23,"AM & W",5,7,9,13,6,12,16,0
+"2026/27","Liga 2","Henrique Pereira","Feirense",24,"AM & W",6,14,9,10,8,10,11,0
+"2026/27","Liga 2","João Oliveira","Feirense",27,"AM & W",5,8,9,12,13,15,13,0
+"2026/27","Liga 2","Rodrigo Ribeiro","Felgueiras 1932",20,"AM & W",2,7,2,3,12,11,9,0
+"2026/27","Liga 2","Tiago Ventura","Felgueiras 1932",24,"AM & W",12,13,9,7,11,10,7,0
+"2026/27","Liga 2","Mario Rivas","Felgueiras 1932",26,"AM & W",15,6,9,5,7,10,7,0
+"2026/27","Liga 2","Salvador Agra","Leixões",35,"AM & W",2,7,4,7,10,6,5,0
+"2026/27","Liga 2","S. Mandiang","Lusitania FC Lourosa",23,"AM & W",13,11,15,15,7,10,11,0
+"2026/27","Liga 2","Paulite","Lusitania FC Lourosa",26,"AM & W",8,12,10,9,9,8,9,0
+"2026/27","Liga 2","Mika Borges","Lusitania FC Lourosa",29,"AM & W",15,13,13,11,11,10,7,0
+"2026/27","Liga 2","Fabinho","Lusitania FC Lourosa",31,"AM & W",7,6,6,7,14,9,6,0
+"2026/27","Liga 2","Juanda Fuentes","Penafiel",23,"AM & W",16,15,16,16,13,12,13,0
+"2026/27","Liga 2","João Pinto","Penafiel",24,"AM & W",10,11,6,3,11,12,9,0
+"2026/27","Liga 2","Ricardo Schutte","Penafiel",28,"AM & W",15,11,12,11,6,10,12,0
+"2026/27","Liga 2","Davo","Penafiel",31,"AM & W",17,15,14,11,9,10,14,0
+"2026/27","Liga 2","Danio Djassi","Portimonense",20,"AM & W",11,14,12,14,9,9,14,0
+"2026/27","Liga 2","Mamede","Portimonense",24,"AM & W",10,15,10,6,14,5,5,0
+"2026/27","Liga 2","Mateus Mide","Porto B",18,"AM & W",6,10,7,8,6,10,11,0
+"2026/27","Liga 2","Duarte Cunha","Porto B",18,"AM & W",11,6,9,10,8,4,8,0
+"2026/27","Liga 2","João Teixeira","Porto B",20,"AM & W",3,6,4,5,10,15,10,0
+"2026/27","Liga 2","Gabriel Veron","Porto B",24,"AM & W",4,8,8,11,10,12,13,0
+"2026/27","Liga 2","Bidu","Sporting CP B",19,"AM & W",8,5,3,2,7,8,4,0
+"2026/27","Liga 2","Micael Sanhá","Sporting CP B",20,"AM & W",7,13,10,10,12,10,9,0
+"2026/27","Liga 2","M. Couto","Sporting CP B",20,"AM & W",14,16,13,10,11,9,7,0
+"2026/27","Liga 2","P. Vieira Sanches Cardoso","Sporting CP B",20,"AM & W",17,10,17,17,7,10,16,0
+"2026/27","Liga 2","Ivanildo Mendes","Sporting CP B",20,"AM & W",11,6,9,9,10,9,8,0
+"2026/27","Liga 2","R. Coelho Fernandes","Tondela",21,"AM & W",12,13,9,5,7,16,8,0
+"2026/27","Liga 2","Hugo Félix","Tondela",22,"AM & W",6,11,6,6,15,7,7,0
+"2026/27","Liga 2","A. Van Der Heide","Tondela",24,"AM & W",18,8,12,9,7,8,7,0
+"2026/27","Liga 2","G. Novero","Tondela",28,"AM & W",5,8,8,9,14,11,9,0
+"2026/27","Liga 2","Nuha Jatta","Torreense",20,"AM & W",4,5,5,8,7,14,12,0
+"2026/27","Liga 2","Luis Quintero","Torreense",22,"AM & W",6,5,4,4,9,11,6,0
+"2026/27","Liga 2","Dany Jean","Torreense",23,"AM & W",15,10,13,11,10,6,13,0
+"2026/27","Liga 2","Manu Pozo","Torreense",24,"AM & W",9,11,11,11,10,3,7,0
+"2026/27","Liga 2","José Nabil","União de Leiria",20,"AM & W",14,7,12,12,12,11,13,0
+"2026/27","Liga 2","Jaiminho","União de Leiria",29,"AM & W",6,15,10,12,7,9,10,0
+"2026/27","Liga 2","Jair Matheus","União de Leiria",29,"AM & W",15,12,14,14,11,9,16,0
+"2026/27","Liga 2","Diogo Martins","União de Leiria",30,"AM & W",5,5,6,8,14,10,7,0
+"2026/27","Liga 2","Matías Lacava","Vizela",24,"AM & W",11,13,15,19,7,9,14,0
+"2026/27","Liga 2","Thio","Vizela",27,"AM & W",10,11,12,11,12,3,5,0
+"2026/27","Liga 2","Miguel Tavares","Vizela",28,"AM & W",3,17,10,14,14,8,13,0
+"2026/27","Liga 2","A. Coundoul","Académica",24,"CF",17,13,16,15,16,10,15,0
+"2026/27","Liga 2","Ilies Faure","Académica",25,"CF",4,5,6,9,8,13,14,0
+"2026/27","Liga 2","Edgar Costa","Amarante",22,"CF",12,14,11,9,9,13,12,0
+"2026/27","Liga 2","A. Idache","Amarante",24,"CF",11,16,14,12,8,11,10,0
+"2026/27","Liga 2","T. Wander","AVS ",23,"CF",2,8,6,10,15,11,9,0
+"2026/27","Liga 2","Rodrigo Pinho","AVS ",35,"CF",11,13,7,3,13,10,7,0
+"2026/27","Liga 2","Anísio Cabral","Benfica B",18,"CF",14,5,8,4,3,5,3,0
+"2026/27","Liga 2","Francisco Silva","Benfica B",19,"CF",10,7,7,5,7,7,8,0
+"2026/27","Liga 2","W. Tavares","Chaves",24,"CF",13,17,15,15,14,11,11,0
+"2026/27","Liga 2","Roberto","Chaves",37,"CF",6,9,7,5,10,19,11,0
+"2026/27","Liga 2","Cuba","Farense",23,"CF",6,11,12,16,10,6,10,0
+"2026/27","Liga 2","Jair Monteiro","Feirense",20,"CF",13,5,8,5,9,10,6,0
+"2026/27","Liga 2","Alexandre Guedes","Feirense",32,"CF",4,7,4,4,9,7,8,0
+"2026/27","Liga 2","Michel Costa","Felgueiras 1932",24,"CF",2,10,8,14,16,12,13,0
+"2026/27","Liga 2","Lucas Duarte","Felgueiras 1932",25,"CF",9,13,11,12,11,15,16,0
+"2026/27","Liga 2","Tiago Leite","Felgueiras 1932",26,"CF",16,10,12,11,10,9,11,0
+"2026/27","Liga 2","José Bica","Leixões",23,"CF",9,11,10,11,9,8,9,0
+"2026/27","Liga 2","Luccas Paraizo","Leixões",24,"CF",9,8,7,7,6,9,8,0
+"2026/27","Liga 2","B. Róchez","Leixões",31,"CF",17,8,11,7,14,10,11,0
+"2026/27","Liga 2","João Santos","Lusitania FC Lourosa",27,"CF",12,7,11,10,7,8,11,0
+"2026/27","Liga 2","Max Svensson","Penafiel",25,"CF",17,16,17,18,15,9,12,0
+"2026/27","Liga 2","Diogo Cabral","Portimonense",23,"CF",5,7,8,11,14,10,8,0
+"2026/27","Liga 2","Welinton Júnior","Portimonense",33,"CF",7,5,7,9,6,4,5,0
+"2026/27","Liga 2","Eduardo Ferreira","Porto B",18,"CF",14,12,14,14,13,15,14,0
+"2026/27","Liga 2","Trofim Melnichenko","Porto B",20,"CF",7,5,9,12,7,10,10,0
+"2026/27","Liga 2","Rafael Nel","Sporting CP B",21,"CF",12,14,11,10,7,9,8,0
+"2026/27","Liga 2","João Marcos","Tondela",26,"CF",14,6,11,11,5,9,9,0
+"2026/27","Liga 2","Tomané","Tondela",34,"CF",16,9,16,17,14,11,14,0
+"2026/27","Liga 2","Musa Drammeh","Torreense",24,"CF",9,12,9,4,7,10,7,0
+"2026/27","Liga 2","Damien Loppy","União de Leiria",29,"CF",7,14,13,15,13,12,11,0
+"2026/27","Liga 2","Pablo Fernández","União de Leiria",30,"CF",16,14,14,12,10,14,11,0
+"2026/27","Liga 2","Juan Muñoz","União de Leiria",30,"CF",12,15,13,12,16,11,12,0
+"2026/27","Liga 2","Yassin Fortune","Vizela",27,"CF",12,14,12,15,11,15,15,0
+"2026/27","Liga 2","Heinz Mörschel","Vizela",29,"CF",3,14,7,11,16,14,14,0
+"2026/27","Liga 2","Anthony Carter","Vizela",32,"CF",8,6,6,5,3,5,6,0
+"2026/27","Liga 2","Diogo Ferreira","Benfica B",19,"GK",0,0,0,0,0,0,0,15
+"2026/27","Liga 2","João Afonso","Porto B",19,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga 2","Francisco Silva","Sporting CP B",20,"GK",0,0,0,0,0,0,0,14
+"2026/27","Liga 2","Guilherme Pires","Sporting CP B",21,"GK",0,0,0,0,0,0,0,13
+"2026/27","Liga 2","Carlos","Tondela",22,"GK",0,0,0,0,0,0,0,9
+"2026/27","Liga 2","Antonio Gomís","Vizela",23,"GK",0,0,0,0,0,0,0,10
+"2026/27","Liga 2","J. Odehnal","União de Leiria",25,"GK",0,0,0,0,0,0,0,10
+"2026/27","Liga 2","Diogo Figueiredo","Amarante",25,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga 2","Vitor Hugo","Lusitania FC Lourosa",25,"GK",0,0,0,0,0,0,0,14
+"2026/27","Liga 2","Adriel Ramos","Torreense",25,"GK",0,0,0,0,0,0,0,7
+"2026/27","Liga 2","Diego Altube","Feirense",26,"GK",0,0,0,0,0,0,0,12
+"2026/27","Liga 2","João Valido","Chaves",26,"GK",0,0,0,0,0,0,0,7
+"2026/27","Liga 2","Dani Rebollo","AVS ",26,"GK",0,0,0,0,0,0,0,15
+"2026/27","Liga 2","Brian Araújo","Lusitania FC Lourosa",26,"GK",0,0,0,0,0,0,0,9
+"2026/27","Liga 2","Dudu","Portimonense",27,"GK",0,0,0,0,0,0,0,11
+"2026/27","Liga 2","Carlos Alves","Académica",28,"GK",0,0,0,0,0,0,0,6
+"2026/27","Liga 2","F. Buntić","Farense",29,"GK",0,0,0,0,0,0,0,7
+"2026/27","Liga 2","Miguel Oliveira","Penafiel",32,"GK",0,0,0,0,0,0,0,14
+"2026/27","Liga 2","Victor Braga","Académica",34,"GK",0,0,0,0,0,0,0,13
+"2026/27","Liga 2","Mateus Pasinato","Felgueiras 1932",34,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga 2","I. Stefanović","Leixões",38,"GK",0,0,0,0,0,0,0,7
+"2026/27","Liga 3","R. Barrett","AD Marco 09",20,"CB",5,12,11,15,10,10,17,0
+"2026/27","Liga 3","Rika","Vitória SC B",20,"CB",16,11,15,14,18,8,12,0
+"2026/27","Liga 3","Kauê Alves","Mafra",20,"CB",18,8,16,19,12,10,14,0
+"2026/27","Liga 3","Diego Tavares","Vitória de Sernache",21,"CB",6,12,8,8,8,9,7,0
+"2026/27","Liga 3","Dinis Almeida","União Santarém",21,"CB",7,11,10,10,7,10,11,0
+"2026/27","Liga 3","Tiago Silva","Trofense",22,"CB",9,8,7,5,7,8,5,0
+"2026/27","Liga 3","Kauã Oliveira","Varzim",22,"CB",8,8,7,5,4,4,6,0
+"2026/27","Liga 3","Moussa Camara","Mafra",22,"CB",11,12,10,9,10,10,11,0
+"2026/27","Liga 3","Matheus Matias","Vitória de Sernache",23,"CB",8,10,10,14,13,14,16,0
+"2026/27","Liga 3","Lucca Carvalho","Trofense",23,"CB",12,8,8,7,7,8,7,0
+"2026/27","Liga 3","Alcobia","Vitória SC B",23,"CB",11,16,13,13,12,6,10,0
+"2026/27","Liga 3","Duarte Henriques","Atlético CP",23,"CB",5,11,4,4,9,9,3,0
+"2026/27","Liga 3","David Vinhas","União Santarém",23,"CB",18,11,18,18,11,14,17,0
+"2026/27","Liga 3","Edgar Moura","Vitória de Sernache",23,"CB",16,8,13,13,7,4,8,0
+"2026/27","Liga 3","Gabriel Passos","Louletano",24,"CB",11,11,13,14,4,7,10,0
+"2026/27","Liga 3","Fernando Loureiro","Caldas",24,"CB",9,8,10,10,4,10,7,0
+"2026/27","Liga 3","Pedro Pereira","Fafe",24,"CB",13,8,10,6,11,7,6,0
+"2026/27","Liga 3","Diogo Nascimento","Caldas",24,"CB",8,8,6,4,8,15,7,0
+"2026/27","Liga 3","Eduardo Monteiro","Atlético CP",24,"CB",12,12,15,16,8,9,16,0
+"2026/27","Liga 3","Hélder Sá","União Santarém",24,"CB",10,9,13,19,10,7,11,0
+"2026/27","Liga 3","Diogo Silva","Sporting Covilhã",25,"CB",9,17,14,18,16,6,12,0
+"2026/27","Liga 3","Cesinha","CF Os Belenenses",25,"CB",10,8,11,12,13,12,14,0
+"2026/27","Liga 3","Wesley Junio","Paços de Ferreira",25,"CB",9,8,9,10,9,9,10,0
+"2026/27","Liga 3","Alisson Calegari","Atlético CP",25,"CB",9,12,10,7,4,14,8,0
+"2026/27","Liga 3","Gonçalo Cardoso","Mafra",26,"CB",13,8,12,11,8,9,8,0
+"2026/27","Liga 3","Fábio Baldé","Leça",26,"CB",9,8,10,12,16,8,11,0
+"2026/27","Liga 3","Gonçalo Loureiro","UD Oliveirense",26,"CB",5,8,5,7,11,12,8,0
+"2026/27","Liga 3","Chicão","AD Marco 09",26,"CB",9,8,12,15,10,14,16,0
+"2026/27","Liga 3","Rodrigo Monteiro","Lusitano Évora 1911",26,"CB",12,8,10,6,11,11,7,0
+"2026/27","Liga 3","Yuri","Vianense",26,"CB",7,8,7,7,10,14,10,0
+"2026/27","Liga 3","Rui Bruno","São João Ver",27,"CB",6,9,5,5,13,10,9,0
+"2026/27","Liga 3","Gustavo Fernandes","Paredes",27,"CB",19,14,13,9,12,11,14,0
+"2026/27","Liga 3","Emerson Gomes","Sporting Covilhã",27,"CB",5,8,6,9,9,14,12,0
+"2026/27","Liga 3","Leandro Teixeira","Fafe",28,"CB",17,15,13,8,16,14,10,0
+"2026/27","Liga 3","Bruno Morais","São João Ver",28,"CB",11,11,13,14,10,16,12,0
+"2026/27","Liga 3","João Batista","Fafe",28,"CB",19,11,17,17,15,8,13,0
+"2026/27","Liga 3","K. John","União Santarém",28,"CB",6,9,7,8,9,7,8,0
+"2026/27","Liga 3","Simão Martins","UD Oliveirense",29,"CB",7,8,8,10,10,7,10,0
+"2026/27","Liga 3","Diogo Izata","Caldas",29,"CB",8,12,11,12,4,10,14,0
+"2026/27","Liga 3","M. Aidara","Sporting Covilhã",30,"CB",4,8,6,10,9,8,8,0
+"2026/27","Liga 3","Nuno Tomás","CF Os Belenenses",31,"CB",14,15,14,13,15,11,12,0
+"2026/27","Liga 3","Tiago Correia","Louletano",32,"CB",15,8,8,4,6,15,9,0
+"2026/27","Liga 3","Dénis Duarte","Paredes",32,"CB",12,10,10,11,13,11,14,0
+"2026/27","Liga 3","Cassiano","Lusitano Évora 1911",32,"CB",9,11,9,7,10,12,8,0
+"2026/27","Liga 3","Cássio Scheid","Leça",32,"CB",6,16,9,9,9,15,12,0
+"2026/27","Liga 3","Laércio Morais","Vianense",33,"CB",8,9,7,7,12,16,10,0
+"2026/27","Liga 3","Rafael Vieira","Paços de Ferreira",34,"CB",16,8,11,8,14,7,6,0
+"2026/27","Liga 3","João Faria","Vianense",36,"CB",10,8,8,5,10,13,9,0
+"2026/27","Liga 3","Marco Baixinho","Lusitano Évora 1911",37,"CB",5,8,8,12,10,10,11,0
+"2026/27","Liga 3","Rúben Fernandes","Varzim",40,"CB",10,13,10,9,14,7,5,0
+"2026/27","Liga 3","Tomás Rodrigues","Vitória SC B",18,"FB & WB",12,13,13,11,17,11,13,0
+"2026/27","Liga 3","Rodrigo Silva","Vitória SC B",19,"FB & WB",10,5,8,7,10,13,8,0
+"2026/27","Liga 3","Vasco Santos","UD Oliveirense",20,"FB & WB",5,7,4,4,9,10,5,0
+"2026/27","Liga 3","Tiago Serrazina","Caldas",20,"FB & WB",6,7,7,10,9,10,8,0
+"2026/27","Liga 3","Tomás Oliveira","Trofense",21,"FB & WB",18,9,13,7,10,16,12,0
+"2026/27","Liga 3","Tomás Marques","Vitória de Sernache",21,"FB & WB",10,6,8,6,11,5,6,0
+"2026/27","Liga 3","J. Oliveira","Trofense",21,"FB & WB",7,9,10,12,11,8,11,0
+"2026/27","Liga 3","Kauan","Sporting Covilhã",21,"FB & WB",7,8,9,11,9,9,8,0
+"2026/27","Liga 3","David Monteiro","CF Os Belenenses",22,"FB & WB",7,14,12,17,8,8,10,0
+"2026/27","Liga 3","A.  Coutinho","Leça",22,"FB & WB",7,7,8,9,12,10,8,0
+"2026/27","Liga 3","Carlinhos","Louletano",22,"FB & WB",9,8,10,13,9,13,15,0
+"2026/27","Liga 3","Rafael Peixoto","Trofense",22,"FB & WB",5,8,6,9,8,9,11,0
+"2026/27","Liga 3","Guilherme Lopes","Caldas",22,"FB & WB",12,5,10,10,8,14,15,0
+"2026/27","Liga 3","Luís Martins","União Santarém",22,"FB & WB",16,11,13,9,8,5,7,0
+"2026/27","Liga 3","Euri Carvalho","Lusitano Évora 1911",22,"FB & WB",7,6,7,9,9,12,15,0
+"2026/27","Liga 3","Vicente Durand","Atlético CP",22,"FB & WB",16,7,14,14,7,14,15,0
+"2026/27","Liga 3","João Ferreira","Mafra",23,"FB & WB",8,10,11,15,5,4,13,0
+"2026/27","Liga 3","João Sérgio","UD Oliveirense",23,"FB & WB",11,5,9,8,11,5,4,0
+"2026/27","Liga 3","Diogo Ribeiro","Leça",23,"FB & WB",8,10,7,6,8,13,9,0
+"2026/27","Liga 3","Leandro Dias","Paços de Ferreira",23,"FB & WB",7,16,11,15,11,3,10,0
+"2026/27","Liga 3","Ruca","São João Ver",24,"FB & WB",13,11,12,9,12,10,9,0
+"2026/27","Liga 3","Gonçalo Barreiras","Caldas",24,"FB & WB",13,8,10,9,3,11,7,0
+"2026/27","Liga 3","Obama Ribeiro","Fafe",24,"FB & WB",6,8,9,11,10,3,6,0
+"2026/27","Liga 3","Janico","Atlético CP",24,"FB & WB",15,9,11,9,9,17,14,0
+"2026/27","Liga 3","L. Van Der Gaag","Louletano",25,"FB & WB",15,5,9,6,5,17,11,0
+"2026/27","Liga 3","Luís Filipe","Varzim",25,"FB & WB",11,8,12,17,12,10,15,0
+"2026/27","Liga 3","Edu Silva","Sporting Covilhã",25,"FB & WB",7,10,7,8,11,7,7,0
+"2026/27","Liga 3","Luís Bastos","UD Oliveirense",25,"FB & WB",10,13,12,11,8,9,9,0
+"2026/27","Liga 3","Rashid","Vianense",25,"FB & WB",10,5,9,11,11,11,11,0
+"2026/27","Liga 3","Miguel Vilela","São João Ver",26,"FB & WB",13,16,12,9,15,9,8,0
+"2026/27","Liga 3","Breno Pais","Fafe",26,"FB & WB",15,15,14,15,14,12,14,0
+"2026/27","Liga 3","André Guedes","Varzim",26,"FB & WB",7,12,11,14,11,11,14,0
+"2026/27","Liga 3","J. Guerrero","AD Marco 09",27,"FB & WB",5,9,8,11,10,12,13,0
+"2026/27","Liga 3","Francisco Ferreira","Mafra",27,"FB & WB",18,7,13,10,10,6,12,0
+"2026/27","Liga 3","Filipe Garcia","Vitória de Sernache",27,"FB & WB",7,10,12,16,12,13,11,0
+"2026/27","Liga 3","Pedro Araújo","Paredes",27,"FB & WB",17,14,13,8,5,13,9,0
+"2026/27","Liga 3","João Silva","Mafra",28,"FB & WB",11,14,15,16,18,12,15,0
+"2026/27","Liga 3","Marcos Soares","Lusitano Évora 1911",29,"FB & WB",10,14,12,11,10,10,8,0
+"2026/27","Liga 3","Elvis","Louletano",29,"FB & WB",13,15,12,9,8,8,8,0
+"2026/27","Liga 3","Tiago André","União Santarém",29,"FB & WB",12,17,15,16,16,12,14,0
+"2026/27","Liga 3","Diogo Castro","Paços de Ferreira",29,"FB & WB",5,8,6,7,15,9,11,0
+"2026/27","Liga 3","Henrique Brito","Vianense",29,"FB & WB",7,13,8,7,6,9,7,0
+"2026/27","Liga 3","Celso Raposo","Mafra",30,"FB & WB",13,9,15,17,12,9,14,0
+"2026/27","Liga 3","João Lucas","CF Os Belenenses",30,"FB & WB",9,14,8,5,11,13,10,0
+"2026/27","Liga 3","João Vigário","Paredes",30,"FB & WB",11,15,14,15,12,10,13,0
+"2026/27","Liga 3","Miguel Bandarra","CF Os Belenenses",30,"FB & WB",12,11,12,11,13,9,9,0
+"2026/27","Liga 3","Bruno Sousa","União Santarém",30,"FB & WB",17,17,14,10,11,6,8,0
+"2026/27","Liga 3","Diogo Clemente","Caldas",31,"FB & WB",7,6,6,6,11,14,8,0
+"2026/27","Liga 3","Gaby Faria","Vianense",32,"FB & WB",4,9,4,3,11,8,4,0
+"2026/27","Liga 3","Erivaldo","AD Marco 09",32,"FB & WB",8,9,8,8,4,17,14,0
+"2026/27","Liga 3","João Pinto","Lusitano Évora 1911",32,"FB & WB",12,11,10,8,16,9,8,0
+"2026/27","Liga 3","Tiago Mesquita","Paços de Ferreira",35,"FB & WB",5,11,6,6,8,10,6,0
+"2026/27","Liga 3","Zeega","Vitória SC B",18,"MF",11,11,12,12,10,11,10,0
+"2026/27","Liga 3","A. Ba","Mafra",19,"MF",9,10,11,16,16,10,15,0
+"2026/27","Liga 3","Afonso Meireles","Vitória SC B",19,"MF",11,8,14,17,12,7,11,0
+"2026/27","Liga 3","André Gomes","Trofense",20,"MF",8,8,9,9,10,14,10,0
+"2026/27","Liga 3","Bruno Henrique","Vitória de Sernache",20,"MF",12,6,10,10,10,9,8,0
+"2026/27","Liga 3","K. Asamoah","Fafe",20,"MF",5,6,4,5,11,15,11,0
+"2026/27","Liga 3","Francisco Fernandes","AD Marco 09",20,"MF",9,7,8,7,12,14,10,0
+"2026/27","Liga 3","Tiago Campas","São João Ver",21,"MF",14,13,14,14,15,6,10,0
+"2026/27","Liga 3","Pedro Teixeira","Trofense",21,"MF",8,8,8,7,8,8,4,0
+"2026/27","Liga 3","Diogo Magalhães","Vianense",22,"MF",6,7,8,11,9,9,6,0
+"2026/27","Liga 3","Tomás Vilela","Louletano",22,"MF",4,10,7,12,5,10,12,0
+"2026/27","Liga 3","Yacouba Maiga","Mafra",22,"MF",13,12,10,6,16,11,12,0
+"2026/27","Liga 3","M. Konaté","Atlético CP",22,"MF",18,13,12,5,4,12,9,0
+"2026/27","Liga 3","Martim Boloto","Varzim",22,"MF",7,15,11,13,11,10,10,0
+"2026/27","Liga 3","D. Rebelo","Varzim",22,"MF",17,7,15,15,3,13,12,0
+"2026/27","Liga 3","R. Embaló","Vitória de Sernache",22,"MF",9,11,13,17,13,17,16,0
+"2026/27","Liga 3","Daniel Carvalho","Fafe",22,"MF",12,13,17,20,11,3,11,0
+"2026/27","Liga 3","Maya Simao","União Santarém",22,"MF",6,11,9,10,8,12,11,0
+"2026/27","Liga 3","R. Mendes Correia","Caldas",22,"MF",6,6,5,5,5,7,5,0
+"2026/27","Liga 3","Gonçalo Cascalheira","Sporting Covilhã",22,"MF",4,9,11,18,19,5,9,0
+"2026/27","Liga 3","Ricardo Rocha","Vitória SC B",23,"MF",8,7,9,12,15,12,13,0
+"2026/27","Liga 3","Kiko Félix","UD Oliveirense",23,"MF",16,12,12,7,12,12,10,0
+"2026/27","Liga 3","Sana Ufala","Trofense",23,"MF",6,6,6,8,4,8,11,0
+"2026/27","Liga 3","Duarte Carvalho","Fafe",24,"MF",16,13,15,17,9,9,15,0
+"2026/27","Liga 3","João Daniel","UD Oliveirense",24,"MF",12,14,11,9,11,10,8,0
+"2026/27","Liga 3","Brais Val","Paredes",24,"MF",8,8,6,5,10,8,8,0
+"2026/27","Liga 3","Carlos Avelino","Leça",24,"MF",14,10,12,10,12,16,12,0
+"2026/27","Liga 3","Bernardo Lourenço","Atlético CP",24,"MF",6,16,8,5,9,6,7,0
+"2026/27","Liga 3","Matheus Palmério","Caldas",25,"MF",7,12,9,9,6,14,9,0
+"2026/27","Liga 3","Rodrigo Ferreira","Leça",25,"MF",17,16,14,10,5,4,7,0
+"2026/27","Liga 3","Braima Sambú","Mafra",25,"MF",11,12,11,11,12,5,9,0
+"2026/27","Liga 3","Sander Ramires","Louletano",25,"MF",9,7,10,14,6,16,16,0
+"2026/27","Liga 3","Lénio Neves","Mafra",26,"MF",20,15,15,10,15,10,10,0
+"2026/27","Liga 3","Angelo Barbosa","Sporting Covilhã",26,"MF",10,7,11,11,7,9,13,0
+"2026/27","Liga 3","Harruna Innusah","Sporting Covilhã",26,"MF",10,11,9,10,11,10,10,0
+"2026/27","Liga 3","Afonso","CF Os Belenenses",26,"MF",18,11,15,11,10,13,8,0
+"2026/27","Liga 3","Nuno Pereira","Leça",26,"MF",13,12,15,18,17,7,15,0
+"2026/27","Liga 3","Malam Camará","São João Ver",26,"MF",6,7,6,5,10,12,9,0
+"2026/27","Liga 3","B. Traoré","AD Marco 09",26,"MF",7,8,7,7,6,7,8,0
+"2026/27","Liga 3","Pedro Ribeiro","AD Marco 09",26,"MF",16,16,16,15,9,6,13,0
+"2026/27","Liga 3","Bruno Silva","Vianense",27,"MF",4,15,10,14,12,11,9,0
+"2026/27","Liga 3","Tomás Castro","Paços de Ferreira",27,"MF",16,12,11,7,14,10,7,0
+"2026/27","Liga 3","Matheus Claudino","Trofense",27,"MF",6,6,5,4,9,5,6,0
+"2026/27","Liga 3","Mimito Biai","Fafe",28,"MF",6,6,7,9,9,4,6,0
+"2026/27","Liga 3","O. Diagne","Lusitano Évora 1911",28,"MF",10,8,11,11,4,6,11,0
+"2026/27","Liga 3","Diogo Silva","Paredes",29,"MF",7,12,11,15,14,9,14,0
+"2026/27","Liga 3","Diogo Pereira","Leça",30,"MF",7,12,10,15,11,7,13,0
+"2026/27","Liga 3","Bura Nogueira","Lusitano Évora 1911",30,"MF",12,13,10,7,11,16,12,0
+"2026/27","Liga 3","Rúben Oliveira","Varzim",31,"MF",13,6,8,8,8,13,9,0
+"2026/27","Liga 3","João Guilherme","AD Marco 09",31,"MF",11,15,10,5,8,10,11,0
+"2026/27","Liga 3","Tomás Podstawski","Paços de Ferreira",31,"MF",8,6,7,7,6,14,11,0
+"2026/27","Liga 3","Filipe Cardoso","Fafe",32,"MF",19,12,11,3,12,18,9,0
+"2026/27","Liga 3","Tiago Morgado","CF Os Belenenses",33,"MF",5,13,9,12,13,11,11,0
+"2026/27","Liga 3","Martim Águas","Lusitano Évora 1911",33,"MF",11,9,12,12,12,11,11,0
+"2026/27","Liga 3","Vasco Braga","UD Oliveirense",33,"MF",15,8,13,12,15,6,8,0
+"2026/27","Liga 3","Ricardo Dias","Atlético CP",35,"MF",9,6,6,4,8,15,10,0
+"2026/27","Liga 3","André Sousa","União Santarém",36,"MF",15,11,15,13,12,10,11,0
+"2026/27","Liga 3","Washington Santana","São João Ver",37,"MF",4,7,5,6,9,13,8,0
+"2026/27","Liga 3","Fábio Pacheco","AD Marco 09",38,"MF",4,6,4,6,8,13,9,0
+"2026/27","Liga 3","Alexandre Dias","Louletano",19,"AM & W",5,10,5,5,3,10,6,0
+"2026/27","Liga 3","Rodrigo Duarte","Vitória SC B",20,"AM & W",5,9,9,10,10,7,8,0
+"2026/27","Liga 3","Solo Traore","Atlético CP",20,"AM & W",15,7,10,9,5,10,9,0
+"2026/27","Liga 3","A. Ngom","Mafra",20,"AM & W",7,16,15,20,8,16,19,0
+"2026/27","Liga 3","Martim Almeida","Vitória de Sernache",21,"AM & W",5,8,7,11,12,12,12,0
+"2026/27","Liga 3","Tim","Varzim",21,"AM & W",9,11,9,10,10,8,9,0
+"2026/27","Liga 3","Rodrigo Matos","Mafra",22,"AM & W",15,15,17,16,12,3,8,0
+"2026/27","Liga 3","Caio Santana","Atlético CP",22,"AM & W",9,16,12,14,11,13,13,0
+"2026/27","Liga 3","E. Mucuana","Caldas",22,"AM & W",15,9,14,15,6,9,12,0
+"2026/27","Liga 3","Caio Rafael","Paços de Ferreira",22,"AM & W",3,8,4,5,13,10,9,0
+"2026/27","Liga 3","Guilherme  Paula","Vitória SC B",22,"AM & W",9,8,11,11,10,8,8,0
+"2026/27","Liga 3","João Pacheco","Sporting Covilhã",22,"AM & W",9,6,12,15,4,11,13,0
+"2026/27","Liga 3","Miguel Falé","Paços de Ferreira",22,"AM & W",11,11,12,14,11,12,15,0
+"2026/27","Liga 3","M. Tepe","Vitória SC B",22,"AM & W",17,8,14,14,7,14,10,0
+"2026/27","Liga 3","Sérgio Malé","Lusitano Évora 1911",22,"AM & W",12,11,16,18,6,8,13,0
+"2026/27","Liga 3","Rodrigo Melro","Vianense",22,"AM & W",3,10,7,8,8,11,8,0
+"2026/27","Liga 3","Dudu","Vitória de Sernache",22,"AM & W",2,10,7,11,10,10,10,0
+"2026/27","Liga 3","Vitinho","Paços de Ferreira",22,"AM & W",16,12,9,4,8,7,4,0
+"2026/27","Liga 3","M. Moreno","Paredes",23,"AM & W",19,14,18,17,12,13,15,0
+"2026/27","Liga 3","João Pedro","Paços de Ferreira",23,"AM & W",11,6,11,12,8,13,13,0
+"2026/27","Liga 3","Tiago Moninhas","CF Os Belenenses",23,"AM & W",9,16,8,3,6,15,9,0
+"2026/27","Liga 3","Guilherme Pio","Caldas",23,"AM & W",13,16,14,14,7,15,13,0
+"2026/27","Liga 3","Bernardo Mesquita","Leça",23,"AM & W",12,13,13,14,10,8,7,0
+"2026/27","Liga 3","L. Garro Lopez","AD Marco 09",23,"AM & W",8,14,13,16,9,9,15,0
+"2026/27","Liga 3","David Rebelo","Leça",23,"AM & W",7,8,6,4,16,6,6,0
+"2026/27","Liga 3","Nuno Martelo","Louletano",23,"AM & W",13,9,10,8,15,13,11,0
+"2026/27","Liga 3","Pedro Medeiros","AD Marco 09",23,"AM & W",13,9,12,13,6,14,13,0
+"2026/27","Liga 3","Diogo Sequeira","Lusitano Évora 1911",23,"AM & W",8,7,10,11,6,7,11,0
+"2026/27","Liga 3","Ricardo Rei","UD Oliveirense",23,"AM & W",5,11,9,13,13,7,13,0
+"2026/27","Liga 3","João Nobrega","União Santarém",24,"AM & W",9,5,7,9,14,15,13,0
+"2026/27","Liga 3","João Tavares","UD Oliveirense",24,"AM & W",5,8,9,16,12,10,15,0
+"2026/27","Liga 3","L. Carlos Pereira Soares","São João Ver",24,"AM & W",15,11,14,12,6,12,11,0
+"2026/27","Liga 3","Daniel Rodrigues","Paredes",24,"AM & W",17,17,14,9,15,9,10,0
+"2026/27","Liga 3","João Couto","Varzim",24,"AM & W",14,15,15,14,9,12,14,0
+"2026/27","Liga 3","Jailson Gomes","Sporting Covilhã",25,"AM & W",12,7,11,10,11,8,11,0
+"2026/27","Liga 3","Picas","Fafe",25,"AM & W",14,13,14,15,13,14,13,0
+"2026/27","Liga 3","Moisés Conceição","Vianense",25,"AM & W",16,14,13,12,2,6,7,0
+"2026/27","Liga 3","André Dias","Vitória de Sernache",25,"AM & W",10,10,10,12,16,8,11,0
+"2026/27","Liga 3","João Castro","Vianense",25,"AM & W",4,4,3,3,8,10,7,0
+"2026/27","Liga 3","Zé Gata","AD Marco 09",25,"AM & W",7,4,6,5,6,8,9,0
+"2026/27","Liga 3","Nuno Cunha","Paços de Ferreira",25,"AM & W",6,10,3,2,17,10,10,0
+"2026/27","Liga 3","Franco Almara","Paredes",25,"AM & W",15,12,14,14,7,11,10,0
+"2026/27","Liga 3","Rodrigo Valente","São João Ver",25,"AM & W",8,10,7,4,16,14,10,0
+"2026/27","Liga 3","Tiago Veiga","Fafe",26,"AM & W",14,6,8,4,8,8,5,0
+"2026/27","Liga 3","Gonçalo Teixeira","Louletano",26,"AM & W",9,8,6,5,12,11,7,0
+"2026/27","Liga 3","César Sousa","Atlético CP",26,"AM & W",10,13,9,9,17,10,13,0
+"2026/27","Liga 3","Rafael Camacho","União Santarém",26,"AM & W",10,7,8,7,17,6,9,0
+"2026/27","Liga 3","Reko","Vianense",27,"AM & W",11,10,7,5,13,15,7,0
+"2026/27","Liga 3","F. Cruz","Sporting Covilhã",27,"AM & W",11,5,12,14,11,14,12,0
+"2026/27","Liga 3","Nicolas Reis","Leça",27,"AM & W",12,11,12,13,15,10,9,0
+"2026/27","Liga 3","Evandro Barros","CF Os Belenenses",27,"AM & W",18,11,17,17,11,11,15,0
+"2026/27","Liga 3","Leandro Alves","Mafra",27,"AM & W",12,13,13,12,12,3,5,0
+"2026/27","Liga 3","Bruninho","CF Os Belenenses",28,"AM & W",16,18,15,12,13,7,8,0
+"2026/27","Liga 3","Kiki Silva","Trofense",28,"AM & W",5,7,10,14,8,8,11,0
+"2026/27","Liga 3","Nuninho","Trofense",28,"AM & W",7,8,9,12,5,8,12,0
+"2026/27","Liga 3","Diogo Leitão","CF Os Belenenses",28,"AM & W",16,12,10,4,6,13,8,0
+"2026/27","Liga 3","Pedro Matos","Varzim",29,"AM & W",10,5,9,8,7,13,10,0
+"2026/27","Liga 3","Rui Batalha","Lusitano Évora 1911",30,"AM & W",11,10,11,7,10,4,6,0
+"2026/27","Liga 3","Nuno Pereira","São João Ver",30,"AM & W",6,10,13,16,10,7,11,0
+"2026/27","Liga 3","Tiago Baptista","Lusitano Évora 1911",31,"AM & W",11,5,6,2,12,12,8,0
+"2026/27","Liga 3","Filipe Oliveira","Caldas",32,"AM & W",3,5,3,3,12,11,6,0
+"2026/27","Liga 3","Vítor Gonçalves","Louletano",34,"AM & W",8,12,7,6,14,11,10,0
+"2026/27","Liga 3","Caleb","Atlético CP",34,"AM & W",9,16,7,7,15,14,12,0
+"2026/27","Liga 3","Feliz Vaz","Trofense",37,"AM & W",4,6,4,4,7,6,6,0
+"2026/27","Liga 3","Ká Semedo","AD Marco 09",32,"CF",13,9,10,7,10,14,12,0
+"2026/27","Liga 3","Hélder Suker","Atlético CP",27,"CF",12,6,9,11,8,9,11,0
+"2026/27","Liga 3","Gonçalo Chaves","Caldas",27,"CF",17,11,13,10,12,15,12,0
+"2026/27","Liga 3","Chamito Alfândega","CF Os Belenenses",22,"CF",14,9,13,15,7,12,10,0
+"2026/27","Liga 3","Mário Correia","Fafe",24,"CF",10,16,13,13,15,9,11,0
+"2026/27","Liga 3","Diego Fernandes","Leça",24,"CF",15,11,14,14,10,13,12,0
+"2026/27","Liga 3","D. Teixeira","Louletano",22,"CF",2,8,5,6,4,9,12,0
+"2026/27","Liga 3","Daniel","Louletano",22,"CF",15,9,10,8,8,10,13,0
+"2026/27","Liga 3","Tiago Sousa","Louletano",23,"CF",2,17,11,19,15,7,12,0
+"2026/27","Liga 3","Dida","Lusitano Évora 1911",30,"CF",8,9,8,7,14,8,5,0
+"2026/27","Liga 3","David Silva","Lusitano Évora 1911",31,"CF",7,10,7,5,13,12,6,0
+"2026/27","Liga 3","M. Niang","Mafra",24,"CF",15,8,10,6,12,10,10,0
+"2026/27","Liga 3","José Sacra","Paços de Ferreira",26,"CF",12,8,9,8,8,9,8,0
+"2026/27","Liga 3","Platiny","Paços de Ferreira",36,"CF",7,10,5,5,7,9,10,0
+"2026/27","Liga 3","Francisco Canário","Paredes",23,"CF",18,9,15,12,12,4,10,0
+"2026/27","Liga 3","Erik","Paredes",28,"CF",6,14,11,13,17,8,10,0
+"2026/27","Liga 3","Luan Capanni","São João Ver",26,"CF",5,14,10,11,14,8,12,0
+"2026/27","Liga 3","Zequinha","São João Ver",39,"CF",6,13,12,15,15,10,14,0
+"2026/27","Liga 3","C. Niang","Sporting Covilhã",24,"CF",7,10,11,15,9,8,13,0
+"2026/27","Liga 3","Y. Rodriguez","UD Oliveirense",21,"CF",12,11,9,6,6,14,7,0
+"2026/27","Liga 3","Théo Fonseca","UD Oliveirense",26,"CF",13,6,10,8,11,12,8,0
+"2026/27","Liga 3","Costinha","União Santarém",19,"CF",13,11,10,8,8,11,10,0
+"2026/27","Liga 3","Rodrigo Mordomo","União Santarém",21,"CF",11,16,15,17,18,13,11,0
+"2026/27","Liga 3","Francisco Silva","Varzim",23,"CF",16,10,9,6,8,11,7,0
+"2026/27","Liga 3","Rodrigo Pereira","Varzim",23,"CF",5,7,5,3,7,14,8,0
+"2026/27","Liga 3","M. Cunha","Varzim",26,"CF",7,11,13,19,13,10,15,0
+"2026/27","Liga 3","Pedro Soares","Vianense",27,"CF",15,8,12,12,6,9,9,0
+"2026/27","Liga 3","K. Hachadi","Vianense",28,"CF",10,16,8,7,12,11,9,0
+"2026/27","Liga 3","Alexandre Patrício","Vitória de Sernache",22,"CF",5,8,9,13,13,10,11,0
+"2026/27","Liga 3","Henrique Cavalcante","Vitória de Sernache",27,"CF",14,12,13,10,7,13,10,0
+"2026/27","Liga 3","E. Julius Opara","Vitória SC B",21,"CF",8,5,9,10,3,10,10,0
+"2026/27","Liga 3","José Cardoso","Vitória SC B",20,"GK",0,0,0,0,0,0,0,13
+"2026/27","Liga 3","D. Almedia","Caldas",20,"GK",0,0,0,0,0,0,0,14
+"2026/27","Liga 3","João Lucas","Vitória de Sernache",21,"GK",0,0,0,0,0,0,0,10
+"2026/27","Liga 3","João Júnior","São João Ver",23,"GK",0,0,0,0,0,0,0,10
+"2026/27","Liga 3","Ricardo Ribeiro","União Santarém",23,"GK",0,0,0,0,0,0,0,9
+"2026/27","Liga 3","Manuel Baldé","Trofense",23,"GK",0,0,0,0,0,0,0,6
+"2026/27","Liga 3","Rafa","Paços de Ferreira",23,"GK",0,0,0,0,0,0,0,5
+"2026/27","Liga 3","Duarte Martins","Lusitano Évora 1911",24,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga 3","Unai Pérez","UD Oliveirense",24,"GK",0,0,0,0,0,0,0,10
+"2026/27","Liga 3","P. Kudakovskiy","Fafe",25,"GK",0,0,0,0,0,0,0,14
+"2026/27","Liga 3","Pedro Costa","Varzim",26,"GK",0,0,0,0,0,0,0,7
+"2026/27","Liga 3","Marcão","Louletano",26,"GK",0,0,0,0,0,0,0,13
+"2026/27","Liga 3","Fábio Matos","Paredes",27,"GK",0,0,0,0,0,0,0,9
+"2026/27","Liga 3","Tiago Martins","AD Marco 09",28,"GK",0,0,0,0,0,0,0,8
+"2026/27","Liga 3","Gustavo Galil","Sporting Covilhã",28,"GK",0,0,0,0,0,0,0,11
+"2026/27","Liga 3","Nuno Silva","Vianense",29,"GK",0,0,0,0,0,0,0,10
+"2026/27","Liga 3","Pedro Silva","Mafra",29,"GK",0,0,0,0,0,0,0,5
+"2026/27","Liga 3","Guilherme Oliveira","CF Os Belenenses",31,"GK",0,0,0,0,0,0,0,15
+"2026/27","Liga 3","Miguel Paiva","Leça",31,"GK",0,0,0,0,0,0,0,14
+"2026/27","Liga 3","Nuno Hidalgo","Atlético CP",35,"GK",0,0,0,0,0,0,0,14
