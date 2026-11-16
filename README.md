@@ -1,6 +1,6 @@
-# 🔍 TheStatsWay - Ligas in Portugal Manager 🔍
+# 🔍 TheStatsWay - Liga Portugal Manager 🔍
  <br>
-Ligas in Portugal Manager is a Football-Manager-style simulation game built with Streamlit. It covers one 2026/27 season of the Portuguese football pyramid (Liga Portugal, Liga 2 and Liga 3), with tactical depth, match preparation and in-game management.  
+Ligas Portugal Manager is a Football-Manager-style simulation game built with Streamlit. It covers one 2026/27 season of the Portuguese football pyramid (Liga Portugal, Liga 2 and Liga 3), with tactical depth, match preparation and in-game management.  
  <br>
  <br>
  
